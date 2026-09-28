@@ -919,20 +919,23 @@ export default function App() {
                 </div>
               )}
 
-              {/* Research Publications & DOI Input (for Best Researcher Category) */}
-              {isResearcherCategory && currentVote && !currentVote.is_abstain && (
-                <div style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-navy)', marginBottom: '4px' }}>
-                    📚 List Research Publications & DOI Links (Required for Committee Verification):
-                  </label>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                    Please enter the publication titles, journals/books, and DOI links (e.g. <em>https://doi.org/10.1000/182</em>) for <strong>{currentVote.nominee_name}</strong> so the electoral committee can verify the research record.
+              {/* Research Publications & DOI Input (Self-Submission / Candidacy for Best Researcher) */}
+              {isResearcherCategory && (
+                <div style={{ marginTop: '20px', padding: '18px', background: '#f8fafc', border: '1px solid #94a3b8', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>📚</span>
+                    <label style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-navy)' }}>
+                      Submit Your Publications & DOI Links ({voter?.full_name}):
+                    </label>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.5 }}>
+                    To be considered for the <strong>Best Researcher Award</strong>, please enter all your research publications this year with verified DOI links below. The electoral committee will audit and verify these DOIs directly.
                   </p>
                   <textarea
                     className="input-styled"
                     rows={4}
                     placeholder="e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, ARMTI Monograph, DOI: 10.1080/..."
-                    value={currentVote.citations || ''}
+                    value={currentVote?.citations || ''}
                     onChange={(e) => handleUpdateCitations(e.target.value)}
                     style={{ width: '100%', resize: 'vertical', fontSize: '0.84rem', fontFamily: 'inherit' }}
                   />
@@ -1622,9 +1625,9 @@ export default function App() {
                         <table className="review-table-clean">
                           <thead>
                             <tr>
-                              <th style={{ width: '22%' }}>Nominee</th>
+                              <th style={{ width: '25%' }}>Faculty Researcher</th>
                               <th style={{ width: '18%' }}>Department</th>
-                              <th style={{ width: '45%' }}>Publications & DOI Citations</th>
+                              <th style={{ width: '42%' }}>Submitted Research Publications & DOI Links</th>
                               <th style={{ width: '15%' }}>Submission Date</th>
                             </tr>
                           </thead>
@@ -1632,21 +1635,23 @@ export default function App() {
                             {adminPubs.map((p, idx) => (
                               <tr key={idx}>
                                 <td>
-                                  <strong>{p.nominee_name}</strong>
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                                    Ref: {p.receipt_code || 'Ballot'}
-                                  </div>
+                                  <strong>{p.full_name || p.nominee_name}</strong>
+                                  {p.staff_id && (
+                                    <div style={{ fontSize: '0.74rem', color: 'var(--color-primary)', fontFamily: 'monospace', fontWeight: 600 }}>
+                                      Staff ID: {p.staff_id}
+                                    </div>
+                                  )}
                                 </td>
                                 <td>
-                                  <span className={getDeptBadgeClass(p.nominee_dept)}>
-                                    {p.nominee_dept || 'ARMTI'}
+                                  <span className={getDeptBadgeClass(p.department || p.nominee_dept)}>
+                                    {p.department || p.nominee_dept || 'ARMTI'}
                                   </span>
                                 </td>
-                                <td style={{ fontSize: '0.82rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, background: '#f8fafc', borderRadius: '6px', padding: '8px' }}>
+                                <td style={{ fontSize: '0.82rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, background: '#f8fafc', borderRadius: '6px', padding: '10px', border: '1px solid #e2e8f0' }}>
                                   {p.citations}
                                 </td>
                                 <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                  {p.created_at ? new Date(p.created_at).toLocaleDateString() : 'Recent'}
+                                  {p.created_at ? new Date(p.created_at).toLocaleString() : 'Recent'}
                                 </td>
                               </tr>
                             ))}
