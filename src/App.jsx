@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  CheckCircle2, 
-  Award, 
-  Search, 
-  ChevronRight, 
-  ChevronLeft, 
-  LogOut, 
-  ShieldCheck, 
-  Printer, 
-  Settings, 
-  AlertCircle, 
-  FileSpreadsheet, 
-  RefreshCw, 
-  X, 
+import {
+  CheckCircle2,
+  Award,
+  Search,
+  ChevronRight,
+  ChevronLeft,
+  LogOut,
+  ShieldCheck,
+  Printer,
+  Settings,
+  AlertCircle,
+  FileSpreadsheet,
+  RefreshCw,
+  X,
   UserCheck,
   Clock,
   LayoutGrid,
@@ -21,8 +21,10 @@ import {
   RotateCcw,
   UserX,
   History,
-  ShieldAlert
 } from 'lucide-react';
+
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const apiUrl = (endpoint) => `${API_BASE}${endpoint}`;
 
 export default function App() {
   // Application Views: 'login' | 'voting' | 'receipt'
@@ -145,7 +147,7 @@ export default function App() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/status');
+      const res = await fetch(apiUrl('/api/status'));
       const data = await res.json();
       setElectionStatus(data.election_status || 'OPEN');
       setAllowSelfVoting(Boolean(data.allow_self_voting));
@@ -160,7 +162,7 @@ export default function App() {
           if (!isNaN(d.getTime())) {
             setAdminDeadlineInput(d.toISOString().slice(0, 16));
           }
-        } catch (_) {}
+        } catch (_) { }
       }
     } catch (err) {
       console.error('Failed to fetch status:', err);
@@ -169,7 +171,7 @@ export default function App() {
 
   const fetchRoster = async () => {
     try {
-      const res = await fetch('/api/voters/roster');
+      const res = await fetch(apiUrl('/api/voters/roster'));
       const data = await res.json();
       setRoster(data.roster || []);
     } catch (err) {
@@ -204,7 +206,7 @@ export default function App() {
     setLoginLoading(true);
 
     try {
-      const res = await fetch('/api/voter/verify', {
+      const res = await fetch(apiUrl('/api/voter/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staff_id: trimmedId })
@@ -220,7 +222,7 @@ export default function App() {
 
       setVoter(data.voter);
 
-      const catRes = await fetch('/api/categories');
+      const catRes = await fetch(apiUrl('/api/categories'));
       const catData = await catRes.json();
       setCategories(catData.categories || []);
       setCurrentIndex(0);
@@ -327,7 +329,7 @@ export default function App() {
     });
 
     try {
-      const res = await fetch('/api/vote/submit', {
+      const res = await fetch(apiUrl('/api/vote/submit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -365,7 +367,7 @@ export default function App() {
     if (!pin) return;
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(apiUrl('/api/admin/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin })
@@ -385,19 +387,19 @@ export default function App() {
 
   const loadAdminData = async (pin = adminPin) => {
     try {
-      const resResults = await fetch('/api/admin/results', { headers: { 'x-admin-pin': pin } });
+      const resResults = await fetch(apiUrl('/api/admin/results'), { headers: { 'x-admin-pin': pin } });
       const dataResults = await resResults.json();
       setAdminResults(dataResults);
 
-      const resCats = await fetch('/api/admin/categories', { headers: { 'x-admin-pin': pin } });
+      const resCats = await fetch(apiUrl('/api/admin/categories'), { headers: { 'x-admin-pin': pin } });
       const dataCats = await resCats.json();
       setAdminCategories(dataCats.categories || []);
 
-      const resVoters = await fetch('/api/admin/voters', { headers: { 'x-admin-pin': pin } });
+      const resVoters = await fetch(apiUrl('/api/admin/voters'), { headers: { 'x-admin-pin': pin } });
       const dataVoters = await resVoters.json();
       setAdminVoters(dataVoters.voters || []);
 
-      const resLogs = await fetch('/api/admin/audit-logs', { headers: { 'x-admin-pin': pin } });
+      const resLogs = await fetch(apiUrl('/api/admin/audit-logs'), { headers: { 'x-admin-pin': pin } });
       const dataLogs = await resLogs.json();
       setAdminAuditLogs(dataLogs.logs || []);
     } catch (err) {
@@ -415,7 +417,7 @@ export default function App() {
 
     setIsSubmittingQuickAdd(true);
     try {
-      const res = await fetch('/api/admin/voters/quick-add', {
+      const res = await fetch(apiUrl('/api/admin/voters/quick-add'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
         body: JSON.stringify(quickAddForm)
@@ -452,9 +454,9 @@ export default function App() {
     if (!disputeModal.voter) return;
     setIsProcessingDispute(true);
     const staffId = disputeModal.voter.staff_id;
-    const endpoint = disputeModal.type === 'invalidate' 
-      ? `/api/admin/voters/${encodeURIComponent(staffId)}/invalidate`
-      : `/api/admin/voters/${encodeURIComponent(staffId)}/revoke`;
+    const endpoint = disputeModal.type === 'invalidate'
+      ? apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/invalidate`)
+      : apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/revoke`);
 
     try {
       const res = await fetch(endpoint, {
@@ -481,7 +483,7 @@ export default function App() {
   const handleSaveAdminSettings = async () => {
     setIsSavingSettings(true);
     try {
-      const res = await fetch('/api/admin/settings', {
+      const res = await fetch(apiUrl('/api/admin/settings'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
         body: JSON.stringify({
@@ -506,7 +508,7 @@ export default function App() {
   const handleSyncGoogleSheet = async () => {
     setIsSyncingRoster(true);
     try {
-      const res = await fetch('/api/admin/sync-roster', {
+      const res = await fetch(apiUrl('/api/admin/sync-roster'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin }
       });
@@ -530,7 +532,7 @@ export default function App() {
     if (!newCatTitle.trim()) return;
 
     try {
-      const res = await fetch('/api/admin/categories', {
+      const res = await fetch(apiUrl('/api/admin/categories'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
         body: JSON.stringify({ title: newCatTitle.trim(), description: newCatDesc.trim(), sort_order: 99 })
@@ -549,7 +551,7 @@ export default function App() {
 
   const handleToggleCatActive = async (catId, currentActive) => {
     try {
-      await fetch(`/api/admin/categories/${catId}`, {
+      await fetch(apiUrl(`/api/admin/categories/${catId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
         body: JSON.stringify({ is_active: currentActive ? 0 : 1 })
@@ -563,7 +565,7 @@ export default function App() {
   const handleDeleteCategory = async (catId, title) => {
     if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
     try {
-      const res = await fetch(`/api/admin/categories/${catId}`, {
+      const res = await fetch(apiUrl(`/api/admin/categories/${catId}`), {
         method: 'DELETE',
         headers: { 'x-admin-pin': adminPin }
       });
@@ -580,7 +582,7 @@ export default function App() {
 
   const handleSetElectionPhase = async (status) => {
     try {
-      const res = await fetch('/api/admin/election-status', {
+      const res = await fetch(apiUrl('/api/admin/election-status'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
         body: JSON.stringify({ status })
@@ -597,7 +599,7 @@ export default function App() {
   const handleResetElectionVotes = async () => {
     if (!confirm('⚠️ WARNING: This will permanently delete all cast ballots and reset all voter records for fresh testing. Continue?')) return;
     try {
-      const res = await fetch('/api/admin/reset-election', {
+      const res = await fetch(apiUrl('/api/admin/reset-election'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin }
       });
@@ -647,7 +649,7 @@ export default function App() {
           <main className="login-container">
             <div className="card-executive">
               <img src="/armti-logo.png" alt="ARMTI Crest" className="login-hero-logo" />
-              <h2 className="login-heading">Faculty Voting Portal</h2>
+              <h2 className="login-heading">Faculty Awards Voting Portal</h2>
               <p className="login-subheading">
                 Please enter your Staff ID to verify eligibility and begin voting for the 2026 Faculty Awards.
               </p>
@@ -749,9 +751,9 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  className="btn-outline" 
-                  onClick={() => setShowCategoryGrid(true)} 
+                <button
+                  className="btn-outline"
+                  onClick={() => setShowCategoryGrid(true)}
                   style={{ fontSize: '0.78rem', padding: '6px 12px' }}
                   title="View all 21 awards grid"
                 >
@@ -1245,7 +1247,7 @@ export default function App() {
                         Category Standings & Winners
                       </h3>
                       <a
-                        href={`/api/admin/export-results?admin_pin=${encodeURIComponent(adminPin)}`}
+                        href={apiUrl(`/api/admin/export-results?admin_pin=${encodeURIComponent(adminPin)}`)}
                         className="btn-solid-primary"
                         style={{ width: 'auto', padding: '8px 16px', fontSize: '0.84rem', textDecoration: 'none' }}
                       >
@@ -1432,9 +1434,9 @@ export default function App() {
                             .filter((v) => {
                               // Query match
                               const q = rosterFilterQuery.toLowerCase().trim();
-                              const matchesQuery = !q || 
-                                v.staff_id.toLowerCase().includes(q) || 
-                                v.full_name.toLowerCase().includes(q) || 
+                              const matchesQuery = !q ||
+                                v.staff_id.toLowerCase().includes(q) ||
+                                v.full_name.toLowerCase().includes(q) ||
                                 (v.department && v.department.toLowerCase().includes(q));
 
                               if (!matchesQuery) return false;
