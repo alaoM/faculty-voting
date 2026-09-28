@@ -70,6 +70,7 @@ export default function App() {
   const [adminCategories, setAdminCategories] = useState([]);
   const [adminVoters, setAdminVoters] = useState([]);
   const [adminAuditLogs, setAdminAuditLogs] = useState([]);
+  const [adminPubs, setAdminPubs] = useState([]);
   const [isSyncingRoster, setIsSyncingRoster] = useState(false);
   const [rosterFilterQuery, setRosterFilterQuery] = useState('');
   const [rosterFilterStatus, setRosterFilterStatus] = useState('ALL'); // 'ALL' | 'VOTED' | 'PENDING' | 'MANUAL' | 'INELIGIBLE'
@@ -264,6 +265,8 @@ export default function App() {
       return;
     }
 
+    const existingCitations = ballotVotes[currentCategory.id]?.citations || '';
+
     setBallotVotes((prev) => ({
       ...prev,
       [currentCategory.id]: {
@@ -272,12 +275,31 @@ export default function App() {
         nominee_staff_id: faculty.staff_id,
         nominee_name: faculty.full_name,
         nominee_dept: faculty.department,
+        citations: existingCitations,
         is_abstain: false
       }
     }));
 
     setSearchQuery('');
     setShowDropdown(false);
+  };
+
+  const handleUpdateCitations = (text) => {
+    if (!currentCategory) return;
+    setBallotVotes((prev) => ({
+      ...prev,
+      [currentCategory.id]: {
+        ...(prev[currentCategory.id] || {
+          category_id: currentCategory.id,
+          category_title: currentCategory.title,
+          nominee_staff_id: null,
+          nominee_name: '__ABSTAIN__',
+          nominee_dept: null,
+          is_abstain: false
+        }),
+        citations: text
+      }
+    }));
   };
 
   const handleClearSelection = () => {
@@ -324,7 +346,8 @@ export default function App() {
         category_title: cat.title,
         nominee_staff_id: v?.nominee_staff_id || null,
         nominee_name: v?.nominee_name || '__ABSTAIN__',
-        nominee_dept: v?.nominee_dept || null
+        nominee_dept: v?.nominee_dept || null,
+        citations: v?.citations || null
       };
     });
 
@@ -402,6 +425,10 @@ export default function App() {
       const resLogs = await fetch(apiUrl('/api/admin/audit-logs'), { headers: { 'x-admin-pin': pin } });
       const dataLogs = await resLogs.json();
       setAdminAuditLogs(dataLogs.logs || []);
+
+      const resPubs = await fetch(apiUrl('/api/admin/research-publications'), { headers: { 'x-admin-pin': pin } });
+      const dataPubs = await resPubs.json();
+      setAdminPubs(dataPubs.publications || []);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
@@ -613,12 +640,15 @@ export default function App() {
   };
 
   // -------------------------------------------------------------
-  // Computed Metrics
+  // Computed Metrics & Category Recognition Flags
   // -------------------------------------------------------------
   const totalCategories = categories.length;
   const answeredCount = Object.keys(ballotVotes).length;
   const progressPercentage = totalCategories > 0 ? Math.round((answeredCount / totalCategories) * 100) : 0;
   const currentVote = currentCategory ? ballotVotes[currentCategory.id] : null;
+
+  const isResearcherCategory = currentCategory?.id === 'cat-2' || currentCategory?.title?.toLowerCase().includes('research');
+  const isOutstationCategory = currentCategory?.id === 'cat-21' || currentCategory?.title?.toLowerCase().includes('outstation');
 
   return (
     <div>
@@ -803,6 +833,16 @@ export default function App() {
               <h2 className="award-title-main">{currentCategory.title}</h2>
               <p className="award-desc-text">{currentCategory.description}</p>
 
+              {/* Special Guidance: Outstation Category */}
+              {isOutstationCategory && (
+                <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', marginBottom: '16px', fontSize: '0.85rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '1.2rem' }}>📍</span>
+                  <div>
+                    <strong>6 Geopolitical Zones Recognition:</strong> This award specifically recognizes outstanding faculty and staff serving in ARMTI's regional outstations and training centers outside headquarters (e.g. North-Central, North-East, North-West, South-East, South-South, South-West).
+                  </div>
+                </div>
+              )}
+
               {/* Nominee Autocomplete Search (Staff ID strictly hidden!) */}
               <div className="search-wrapper" ref={searchContainerRef}>
                 <label className="input-label-styled">Search & Select Nominee</label>
@@ -876,6 +916,26 @@ export default function App() {
                   <button className="btn-unselect" onClick={handleClearSelection}>
                     ✕ Change Nominee
                   </button>
+                </div>
+              )}
+
+              {/* Research Publications & DOI Input (for Best Researcher Category) */}
+              {isResearcherCategory && currentVote && !currentVote.is_abstain && (
+                <div style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-navy)', marginBottom: '4px' }}>
+                    📚 List Research Publications & DOI Links (Required for Committee Verification):
+                  </label>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    Please enter the publication titles, journals/books, and DOI links (e.g. <em>https://doi.org/10.1000/182</em>) for <strong>{currentVote.nominee_name}</strong> so the electoral committee can verify the research record.
+                  </p>
+                  <textarea
+                    className="input-styled"
+                    rows={4}
+                    placeholder="e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, ARMTI Monograph, DOI: 10.1080/..."
+                    value={currentVote.citations || ''}
+                    onChange={(e) => handleUpdateCitations(e.target.value)}
+                    style={{ width: '100%', resize: 'vertical', fontSize: '0.84rem', fontFamily: 'inherit' }}
+                  />
                 </div>
               )}
 
@@ -1071,6 +1131,11 @@ export default function App() {
                                     {vote.nominee_dept || 'ARMTI'}
                                   </span>
                                 </span>
+                                {vote.citations && (
+                                  <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '4px', fontStyle: 'italic' }}>
+                                    📄 DOIs/Publications: {vote.citations.length > 60 ? vote.citations.slice(0, 60) + '...' : vote.citations}
+                                  </div>
+                                )}
                               </div>
                             )
                           ) : (
@@ -1198,7 +1263,14 @@ export default function App() {
                     onClick={() => { setAdminTab('roster'); loadAdminData(); }}
                     style={{ background: adminTab === 'roster' ? 'var(--color-primary)' : '#ffffff', color: adminTab === 'roster' ? '#ffffff' : 'var(--text-main)' }}
                   >
-                    👥 Faculty Roster & Disputes ({adminVoters.length || roster.length})
+                    👥 Faculty Roster ({adminVoters.length || roster.length})
+                  </button>
+                  <button
+                    className={`btn-outline ${adminTab === 'publications' ? 'active' : ''}`}
+                    onClick={() => { setAdminTab('publications'); loadAdminData(); }}
+                    style={{ background: adminTab === 'publications' ? 'var(--color-primary)' : '#ffffff', color: adminTab === 'publications' ? '#ffffff' : 'var(--text-main)' }}
+                  >
+                    📚 Research DOIs ({adminPubs.length})
                   </button>
                   <button
                     className={`btn-outline ${adminTab === 'audit' ? 'active' : ''}`}
@@ -1523,6 +1595,65 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                )}
+
+                {/* TAB: Research DOIs Verification */}
+                {adminTab === 'publications' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-navy)' }}>Research Publications & DOI Citations Audit</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                          Submitted publications and DOI links for Best Researcher candidates for committee verification.
+                        </p>
+                      </div>
+                      <button className="btn-outline" onClick={() => loadAdminData()} style={{ fontSize: '0.82rem' }}>
+                        <RefreshCw size={14} /> Refresh Citations
+                      </button>
+                    </div>
+
+                    {adminPubs.length === 0 ? (
+                      <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)' }}>
+                        No research publications or DOI citations submitted yet.
+                      </div>
+                    ) : (
+                      <div style={{ maxHeight: '440px', overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                        <table className="review-table-clean">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '22%' }}>Nominee</th>
+                              <th style={{ width: '18%' }}>Department</th>
+                              <th style={{ width: '45%' }}>Publications & DOI Citations</th>
+                              <th style={{ width: '15%' }}>Submission Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminPubs.map((p, idx) => (
+                              <tr key={idx}>
+                                <td>
+                                  <strong>{p.nominee_name}</strong>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                                    Ref: {p.receipt_code || 'Ballot'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={getDeptBadgeClass(p.nominee_dept)}>
+                                    {p.nominee_dept || 'ARMTI'}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: '0.82rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, background: '#f8fafc', borderRadius: '6px', padding: '8px' }}>
+                                  {p.citations}
+                                </td>
+                                <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  {p.created_at ? new Date(p.created_at).toLocaleDateString() : 'Recent'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
