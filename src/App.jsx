@@ -102,13 +102,22 @@ export default function App() {
     fetchStatus();
     fetchRoster();
 
+    // Auto-refresh roster & status in background every 45 seconds
+    const autoSyncInterval = setInterval(() => {
+      fetchStatus();
+      fetchRoster();
+    }, 45000);
+
     const handleClickOutside = (e) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
         setShowDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      clearInterval(autoSyncInterval);
+    };
   }, []);
 
   useEffect(() => {
