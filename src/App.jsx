@@ -26,6 +26,43 @@ import {
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 const apiUrl = (endpoint) => `${API_BASE}${endpoint}`;
 
+export function validatePublicationYears(text) {
+  if (!text || !text.trim()) {
+    return { valid: true };
+  }
+
+  const cleanText = text.trim();
+  const yearMatches = cleanText.match(/\b(19\d{2}|20\d{2})\b/g) || [];
+  const years = yearMatches.map(Number);
+
+  const invalidPastYears = years.filter((y) => y < 2025);
+  if (invalidPastYears.length > 0) {
+    const earliestInvalid = Math.min(...invalidPastYears);
+    return {
+      valid: false,
+      error: `Invalid publication year detected (${earliestInvalid}). Only publications from 2025 and 2026 are eligible for the 2026 Faculty Awards.`
+    };
+  }
+
+  const futureYears = years.filter((y) => y > 2026);
+  if (futureYears.length > 0) {
+    return {
+      valid: false,
+      error: `Invalid publication year detected (${futureYears[0]}). Only publications from 2025 and 2026 are eligible.`
+    };
+  }
+
+  const validYears = years.filter((y) => y === 2025 || y === 2026);
+  if (validYears.length === 0) {
+    return {
+      valid: false,
+      error: 'Please explicitly state the publication year (2025 or 2026) for your research output (e.g. "(2025)" or "(2026)").'
+    };
+  }
+
+  return { valid: true, validYears };
+}
+
 export default function App() {
   // Application Views: 'login' | 'voting' | 'receipt'
   const [view, setView] = useState('login');
@@ -345,6 +382,17 @@ export default function App() {
   // -------------------------------------------------------------
   const handleConfirmSubmitBallot = async () => {
     if (!voter) return;
+
+    // Validate Publication Years for Best Researcher (Strict 2025 & 2026 only)
+    const researcherVote = ballotVotes['cat-2'] || Object.values(ballotVotes).find((v) => v?.category_title?.toLowerCase().includes('research'));
+    if (researcherVote && researcherVote.citations && researcherVote.citations.trim()) {
+      const yearCheck = validatePublicationYears(researcherVote.citations);
+      if (!yearCheck.valid) {
+        alert('⚠️ Best Researcher Award Validation:\n' + yearCheck.error);
+        return;
+      }
+    }
+
     setIsSubmittingVote(true);
 
     const votesPayload = categories.map((cat) => {
@@ -936,15 +984,32 @@ export default function App() {
                   <textarea
                     className="input-styled"
                     rows={5}
-                    placeholder="Type or paste your publications with DOIs here, e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, Journal of Science, DOI: 10.1080/..."
+                    placeholder="Type or paste your publications with DOIs here, e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, Journal of Science (2026), DOI: 10.1080/..."
                     value={currentVote?.citations || ''}
                     onChange={(e) => handleUpdateCitations(e.target.value)}
                     style={{ width: '100%', resize: 'vertical', fontSize: '0.86rem', fontFamily: 'inherit', lineHeight: 1.5 }}
                     autoFocus
                   />
+                  {/* Real-time Year Eligibility Feedback */}
                   {currentVote?.citations?.trim() && (
-                    <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'var(--color-emerald)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={14} /> Publications submitted under your profile ({voter?.full_name})
+                    <div style={{ marginTop: '10px' }}>
+                      {(() => {
+                        const yearCheck = validatePublicationYears(currentVote.citations);
+                        if (!yearCheck.valid) {
+                          return (
+                            <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#b91c1c', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                              <span>{yearCheck.error}</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', color: '#15803d', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <CheckCircle2 size={15} style={{ flexShrink: 0 }} />
+                            <span>✅ Validated 2025/2026 Publication Year(s): {Array.from(new Set(yearCheck.validYears)).join(', ')}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1146,11 +1211,25 @@ export default function App() {
                                     {vote.nominee_dept || 'ARMTI'}
                                   </span>
                                 </span>
-                                {vote.citations && (
-                                  <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '4px', fontStyle: 'italic' }}>
-                                    📄 DOIs/Publications: {vote.citations.length > 60 ? vote.citations.slice(0, 60) + '...' : vote.citations}
-                                  </div>
-                                )}
+                                {vote.citations && (() => {
+                                  const yearCheck = validatePublicationYears(vote.citations);
+                                  return (
+                                    <div style={{ marginTop: '6px', fontSize: '0.75rem' }}>
+                                      <div style={{ color: '#0284c7', fontStyle: 'italic', marginBottom: '2px' }}>
+                                        📄 DOIs/Publications: {vote.citations.length > 60 ? vote.citations.slice(0, 60) + '...' : vote.citations}
+                                      </div>
+                                      {yearCheck.valid ? (
+                                        <span style={{ color: '#15803d', fontWeight: 600 }}>
+                                          ✅ 2025/2026 Publication Year(s) Validated
+                                        </span>
+                                      ) : (
+                                        <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                                          ⚠️ {yearCheck.error}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             )
                           ) : (
