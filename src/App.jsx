@@ -286,18 +286,17 @@ export default function App() {
 
   const handleUpdateCitations = (text) => {
     if (!currentCategory) return;
+    const hasText = Boolean(text && text.trim());
     setBallotVotes((prev) => ({
       ...prev,
       [currentCategory.id]: {
-        ...(prev[currentCategory.id] || {
-          category_id: currentCategory.id,
-          category_title: currentCategory.title,
-          nominee_staff_id: null,
-          nominee_name: '__ABSTAIN__',
-          nominee_dept: null,
-          is_abstain: false
-        }),
-        citations: text
+        category_id: currentCategory.id,
+        category_title: currentCategory.title,
+        nominee_staff_id: voter?.staff_id || null,
+        nominee_name: voter?.full_name || 'Faculty Member',
+        nominee_dept: voter?.department || 'ARMTI Faculty',
+        citations: text,
+        is_abstain: !hasText
       }
     }));
   };
@@ -835,102 +834,110 @@ export default function App() {
 
 
 
-              {/* Nominee Autocomplete Search (Staff ID strictly hidden!) */}
-              <div className="search-wrapper" ref={searchContainerRef}>
-                <label className="input-label-styled">Search & Select Nominee</label>
-                <div style={{ position: 'relative' }}>
-                  <Search size={18} className="search-icon-svg" />
-                  <input
-                    type="text"
-                    className="search-input-box"
-                    placeholder="Type colleague's name or department to nominate..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowDropdown(true);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    disabled={currentVote?.is_abstain}
-                  />
-                </div>
+              {/* Nominee Autocomplete Search (Only for Peer-Nominated Awards - Hidden for Best Researcher) */}
+              {!isResearcherCategory ? (
+                <>
+                  <div className="search-wrapper" ref={searchContainerRef}>
+                    <label className="input-label-styled">Search & Select Nominee</label>
+                    <div style={{ position: 'relative' }}>
+                      <Search size={18} className="search-icon-svg" />
+                      <input
+                        type="text"
+                        className="search-input-box"
+                        placeholder="Type colleague's name or department to nominate..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setShowDropdown(true);
+                        }}
+                        onFocus={() => setShowDropdown(true)}
+                        disabled={currentVote?.is_abstain}
+                      />
+                    </div>
 
-                {/* Suggestions Dropdown (NO Staff ID displayed) */}
-                {showDropdown && searchQuery.trim().length > 0 && (
-                  <div className="search-dropdown-menu">
-                    {filteredNominees.length === 0 ? (
-                      <div style={{ padding: '14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                        No faculty member found matching "<strong>{searchQuery}</strong>"
-                      </div>
-                    ) : (
-                      filteredNominees.slice(0, 12).map((faculty) => {
-                        const isSelf = String(faculty.staff_id).trim().toLowerCase() === String(voter?.staff_id).trim().toLowerCase();
-                        return (
-                          <div
-                            key={faculty.staff_id}
-                            className="dropdown-nominee-row"
-                            onClick={() => handleSelectNominee(faculty)}
-                          >
-                            <div>
-                              <div className="nominee-row-name">
-                                {faculty.full_name} {isSelf && <span style={{ color: 'var(--color-amber)', fontSize: '0.75rem' }}>(You)</span>}
-                              </div>
-                              <div style={{ marginTop: '3px' }}>
-                                <span className={getDeptBadgeClass(faculty.department)}>
-                                  {faculty.department || 'ARMTI'}
-                                </span>
-                                {faculty.division && (
-                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
-                                    {faculty.division}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <UserCheck size={16} color="var(--color-primary)" />
+                    {/* Suggestions Dropdown (NO Staff ID displayed) */}
+                    {showDropdown && searchQuery.trim().length > 0 && (
+                      <div className="search-dropdown-menu">
+                        {filteredNominees.length === 0 ? (
+                          <div style={{ padding: '14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                            No faculty member found matching "<strong>{searchQuery}</strong>"
                           </div>
-                        );
-                      })
+                        ) : (
+                          filteredNominees.slice(0, 12).map((faculty) => {
+                            const isSelf = String(faculty.staff_id).trim().toLowerCase() === String(voter?.staff_id).trim().toLowerCase();
+                            return (
+                              <div
+                                key={faculty.staff_id}
+                                className="dropdown-nominee-row"
+                                onClick={() => handleSelectNominee(faculty)}
+                              >
+                                <div>
+                                  <div className="nominee-row-name">
+                                    {faculty.full_name} {isSelf && <span style={{ color: 'var(--color-amber)', fontSize: '0.75rem' }}>(You)</span>}
+                                  </div>
+                                  <div style={{ marginTop: '3px' }}>
+                                    <span className={getDeptBadgeClass(faculty.department)}>
+                                      {faculty.department || 'ARMTI'}
+                                    </span>
+                                    {faculty.division && (
+                                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                                        {faculty.division}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <UserCheck size={16} color="var(--color-primary)" />
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Selected Nominee Card Preview (NO Staff ID displayed) */}
-              {currentVote && !currentVote.is_abstain && (
-                <div className="selected-nominee-box">
-                  <div>
-                    <strong>{currentVote.nominee_name}</strong>
-                    <div style={{ marginTop: '4px' }}>
-                      <span className={getDeptBadgeClass(currentVote.nominee_dept)}>
-                        {currentVote.nominee_dept || 'ARMTI Faculty'}
-                      </span>
+                  {/* Selected Nominee Card Preview (NO Staff ID displayed) */}
+                  {currentVote && !currentVote.is_abstain && (
+                    <div className="selected-nominee-box">
+                      <div>
+                        <strong>{currentVote.nominee_name}</strong>
+                        <div style={{ marginTop: '4px' }}>
+                          <span className={getDeptBadgeClass(currentVote.nominee_dept)}>
+                            {currentVote.nominee_dept || 'ARMTI Faculty'}
+                          </span>
+                        </div>
+                      </div>
+                      <button className="btn-unselect" onClick={handleClearSelection}>
+                        ✕ Change Nominee
+                      </button>
                     </div>
-                  </div>
-                  <button className="btn-unselect" onClick={handleClearSelection}>
-                    ✕ Change Nominee
-                  </button>
-                </div>
-              )}
-
-              {/* Research Publications & DOI Input (Self-Submission / Candidacy for Best Researcher) */}
-              {isResearcherCategory && (
-                <div style={{ marginTop: '20px', padding: '18px', background: '#f8fafc', border: '1px solid #94a3b8', borderRadius: '12px' }}>
+                  )}
+                </>
+              ) : (
+                /* Research Publications & DOI Input (Direct Voter Self-Submission for Best Researcher) */
+                <div style={{ marginTop: '10px', padding: '20px', background: '#f8fafc', border: '1px solid #94a3b8', borderRadius: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '1.2rem' }}>📚</span>
-                    <label style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-navy)' }}>
-                      Submit Your Publications & DOI Links ({voter?.full_name}):
+                    <span style={{ fontSize: '1.3rem' }}>📚</span>
+                    <label style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-navy)' }}>
+                      Enter Your Research Publications & DOI Links ({voter?.full_name}):
                     </label>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.5 }}>
-                    To be considered for the <strong>Best Researcher Award</strong>, please enter all your research publications this year with verified DOI links below.
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.5 }}>
+                    This award is determined by publication output. As <strong>{voter?.full_name}</strong>, please list your peer-reviewed papers, books, monographs, and valid DOI links below to enter your candidacy for committee verification.
                   </p>
                   <textarea
                     className="input-styled"
-                    rows={4}
-                    placeholder="e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, Journal of Science. DOI: 10.1080/..."
+                    rows={5}
+                    placeholder="Type or paste your publications with DOIs here, e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, Journal of Science, DOI: 10.1080/..."
                     value={currentVote?.citations || ''}
                     onChange={(e) => handleUpdateCitations(e.target.value)}
-                    style={{ width: '100%', resize: 'vertical', fontSize: '0.84rem', fontFamily: 'inherit' }}
+                    style={{ width: '100%', resize: 'vertical', fontSize: '0.86rem', fontFamily: 'inherit', lineHeight: 1.5 }}
+                    autoFocus
                   />
+                  {currentVote?.citations?.trim() && (
+                    <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'var(--color-emerald)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <CheckCircle2 size={14} /> Publications submitted under your profile ({voter?.full_name})
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -941,7 +948,11 @@ export default function App() {
                   checked={Boolean(currentVote?.is_abstain)}
                   onChange={handleToggleAbstain}
                 />
-                <span>I choose to <strong>Abstain / Skip</strong> this category</span>
+                <span>
+                  {isResearcherCategory
+                    ? 'I have no publications to submit for this award (Skip)'
+                    : <span>I choose to <strong>Abstain / Skip</strong> this category</span>}
+                </span>
               </label>
             </div>
 
