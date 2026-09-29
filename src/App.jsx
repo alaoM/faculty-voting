@@ -833,15 +833,7 @@ export default function App() {
               <h2 className="award-title-main">{currentCategory.title}</h2>
               <p className="award-desc-text">{currentCategory.description}</p>
 
-              {/* Special Guidance: Outstation Category */}
-              {isOutstationCategory && (
-                <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', marginBottom: '16px', fontSize: '0.85rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.2rem' }}>📍</span>
-                  <div>
-                    <strong>6 Geopolitical Zones Recognition:</strong> This award specifically recognizes outstanding faculty and staff serving in ARMTI's regional outstations and training centers outside headquarters (e.g. North-Central, North-East, North-West, South-East, South-South, South-West).
-                  </div>
-                </div>
-              )}
+
 
               {/* Nominee Autocomplete Search (Staff ID strictly hidden!) */}
               <div className="search-wrapper" ref={searchContainerRef}>
@@ -929,12 +921,12 @@ export default function App() {
                     </label>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.5 }}>
-                    To be considered for the <strong>Best Researcher Award</strong>, please enter all your research publications this year with verified DOI links below. The electoral committee will audit and verify these DOIs directly.
+                    To be considered for the <strong>Best Researcher Award</strong>, please enter all your research publications this year with verified DOI links below.
                   </p>
                   <textarea
                     className="input-styled"
                     rows={4}
-                    placeholder="e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, ARMTI Monograph, DOI: 10.1080/..."
+                    placeholder="e.g.&#10;1. &quot;Agricultural Value Chains in Nigeria&quot; (2025), Journal of Agri-Management, DOI: https://doi.org/10.1016/...&#10;2. &quot;Rural Extension Approaches&quot;, Journal of Science. DOI: 10.1080/..."
                     value={currentVote?.citations || ''}
                     onChange={(e) => handleUpdateCitations(e.target.value)}
                     style={{ width: '100%', resize: 'vertical', fontSize: '0.84rem', fontFamily: 'inherit' }}
