@@ -21,7 +21,11 @@ import {
   RotateCcw,
   UserX,
   History,
+  Trophy,
+  Sparkles,
+  ShieldAlert
 } from 'lucide-react';
+import ResultsReveal from './components/reveal/ResultsReveal';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 const apiUrl = (endpoint) => `${API_BASE}${endpoint}`;
@@ -127,17 +131,37 @@ export default function App() {
   const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // Add Category Form
+  // Add Category Form State
   const [showAddCatForm, setShowAddCatForm] = useState(false);
+  const [editingCatId, setEditingCatId] = useState(null);
   const [newCatTitle, setNewCatTitle] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
+  const [newCatAwardType, setNewCatAwardType] = useState('VOTING');
+  const [newCatWinnerName, setNewCatWinnerName] = useState('');
+  const [newCatWinnerDept, setNewCatWinnerDept] = useState('');
+  const [newCatCitation, setNewCatCitation] = useState('');
+  const [newCatPercentage, setNewCatPercentage] = useState('100.0');
 
   // -------------------------------------------------------------
-  // Initial Lifecycle & Countdown Clock
+  // Initial Lifecycle & Countdown Clock & Results Reveal Route
   // -------------------------------------------------------------
   useEffect(() => {
     fetchStatus();
     fetchRoster();
+
+    // Check if initial URL is /admin/results-reveal or contains reveal hash
+    if (window.location.pathname.includes('/results-reveal') || window.location.hash.includes('reveal')) {
+      setView('reveal');
+    }
+
+    const handlePopState = () => {
+      if (window.location.pathname.includes('/results-reveal') || window.location.hash.includes('reveal')) {
+        setView('reveal');
+      } else if (view === 'reveal') {
+        setView('login');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
 
     // Auto-refresh roster & status in background every 45 seconds
     const autoSyncInterval = setInterval(() => {
@@ -153,6 +177,7 @@ export default function App() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('popstate', handlePopState);
       clearInterval(autoSyncInterval);
     };
   }, []);
@@ -615,21 +640,56 @@ export default function App() {
     if (!newCatTitle.trim()) return;
 
     try {
-      const res = await fetch(apiUrl('/api/admin/categories'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
-        body: JSON.stringify({ title: newCatTitle.trim(), description: newCatDesc.trim(), sort_order: 99 })
-      });
+      const payload = {
+        title: newCatTitle.trim(),
+        description: newCatDesc.trim(),
+        sort_order: 99,
+        award_type: newCatAwardType,
+        manual_winner_name: newCatAwardType === 'MANUAL' ? newCatWinnerName.trim() : null,
+        manual_winner_dept: newCatAwardType === 'MANUAL' ? newCatWinnerDept.trim() : null,
+        manual_citation: newCatAwardType === 'MANUAL' ? newCatCitation.trim() : null,
+        manual_percentage: newCatAwardType === 'MANUAL' ? (newCatPercentage || '100.0') : null
+      };
 
-      if (res.ok) {
-        setNewCatTitle('');
-        setNewCatDesc('');
-        setShowAddCatForm(false);
-        loadAdminData();
+      if (editingCatId) {
+        await fetch(apiUrl(`/api/admin/categories/${editingCatId}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        await fetch(apiUrl('/api/admin/categories'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
+          body: JSON.stringify(payload)
+        });
       }
+
+      setNewCatTitle('');
+      setNewCatDesc('');
+      setNewCatAwardType('VOTING');
+      setNewCatWinnerName('');
+      setNewCatWinnerDept('');
+      setNewCatCitation('');
+      setNewCatPercentage('100.0');
+      setEditingCatId(null);
+      setShowAddCatForm(false);
+      loadAdminData();
     } catch (err) {
-      alert('Failed to add category: ' + err.message);
+      alert('Failed to save category: ' + err.message);
     }
+  };
+
+  const handleEditCategory = (cat) => {
+    setEditingCatId(cat.id);
+    setNewCatTitle(cat.title || '');
+    setNewCatDesc(cat.description || '');
+    setNewCatAwardType(cat.award_type || 'VOTING');
+    setNewCatWinnerName(cat.manual_winner_name || '');
+    setNewCatWinnerDept(cat.manual_winner_dept || '');
+    setNewCatCitation(cat.manual_citation || '');
+    setNewCatPercentage(cat.manual_percentage || '100.0');
+    setShowAddCatForm(true);
   };
 
   const handleToggleCatActive = async (catId, currentActive) => {
@@ -705,6 +765,70 @@ export default function App() {
 
   const isResearcherCategory = currentCategory?.id === 'cat-2' || currentCategory?.title?.toLowerCase().includes('research');
   const isOutstationCategory = currentCategory?.id === 'cat-21' || currentCategory?.title?.toLowerCase().includes('outstation');
+
+  // Dedicated Full-Screen Results Reveal Awards View
+  if (view === 'reveal') {
+    if (!adminPin) {
+      return (
+        <div className="reveal-viewport" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="reveal-setup-modal" style={{ maxWidth: '440px', textAlign: 'center' }}>
+            <Trophy size={48} color="var(--reveal-gold-mid)" style={{ margin: '0 auto 12px auto' }} />
+            <h2 className="serif-display gold-gradient-text" style={{ fontSize: '1.8rem', margin: '0 0 8px 0' }}>
+              Results Reveal Portal
+            </h2>
+            <p style={{ color: 'var(--reveal-text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
+              Admin PIN authentication is required to access the awards presentation.
+            </p>
+
+            {adminPinError && (
+              <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px' }}>
+                {adminPinError}
+              </div>
+            )}
+
+            <form onSubmit={handleAdminLogin}>
+              <input
+                type="password"
+                className="reveal-form-input"
+                placeholder="Enter Admin PIN"
+                value={adminPinInput}
+                onChange={(e) => setAdminPinInput(e.target.value)}
+                style={{ marginBottom: '16px', textAlign: 'center', letterSpacing: '0.2em' }}
+                required
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="reveal-btn-secondary"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    setView('login');
+                    window.history.pushState({}, '', '/');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="reveal-btn-primary" style={{ flex: 1 }}>
+                  Unlock Reveal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <ResultsReveal
+        adminPin={adminPin}
+        onExitReveal={() => {
+          setView('login');
+          window.history.pushState({}, '', '/');
+        }}
+      />
+    );
+  }
 
   return (
     <div>
@@ -1380,6 +1504,26 @@ export default function App() {
                   >
                     ⚙️ Election Controls
                   </button>
+
+                  <button
+                    className="btn-outline"
+                    onClick={() => {
+                      setShowAdminModal(false);
+                      setView('reveal');
+                      window.history.pushState({}, '', '/admin/results-reveal');
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #1e1708 0%, #36290e 100%)',
+                      borderColor: '#e6b94a',
+                      color: '#fff3b0',
+                      fontWeight: 600,
+                      boxShadow: '0 2px 10px rgba(230, 185, 74, 0.3)',
+                      marginLeft: 'auto'
+                    }}
+                    title="Launch Projector-Ready Oscars Results Presentation"
+                  >
+                    ✨ Launch Oscars Reveal Stage
+                  </button>
                 </div>
 
                 {/* TAB 1: Live Results */}
@@ -1467,25 +1611,43 @@ export default function App() {
                         <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-navy)' }}>Award Categories</h3>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Add, edit, or toggle categories displayed on the ballot.</p>
                       </div>
-                      <button className="btn-solid-primary" onClick={() => setShowAddCatForm(!showAddCatForm)} style={{ width: 'auto', padding: '8px 16px', fontSize: '0.84rem' }}>
-                        + Add New Award
+                      <button
+                        className="btn-solid-primary"
+                        onClick={() => {
+                          setEditingCatId(null);
+                          setNewCatTitle('');
+                          setNewCatDesc('');
+                          setNewCatAwardType('VOTING');
+                          setNewCatWinnerName('');
+                          setNewCatWinnerDept('');
+                          setNewCatCitation('');
+                          setNewCatPercentage('100.0');
+                          setShowAddCatForm(!showAddCatForm);
+                        }}
+                        style={{ width: 'auto', padding: '8px 16px', fontSize: '0.84rem' }}
+                      >
+                        + Add Award Category
                       </button>
                     </div>
 
                     {showAddCatForm && (
                       <form onSubmit={handleAddCategorySubmit} style={{ background: 'var(--bg-subtle)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-medium)', marginBottom: '20px' }}>
-                        <h4 style={{ marginBottom: '12px', fontSize: '0.95rem' }}>Create Award Category</h4>
+                        <h4 style={{ marginBottom: '14px', fontSize: '1rem', color: 'var(--color-navy)' }}>
+                          {editingCatId ? 'Edit Award Category' : 'Create Award Category'}
+                        </h4>
+
                         <div style={{ marginBottom: '14px' }}>
-                          <label className="input-label-styled">Award Title</label>
+                          <label className="input-label-styled">Award Title *</label>
                           <input
                             type="text"
                             className="input-styled"
                             value={newCatTitle}
                             onChange={(e) => setNewCatTitle(e.target.value)}
-                            placeholder="e.g. Innovator of the Year"
+                            placeholder="e.g. Service Excellence Award (Executive Director's Award)"
                             required
                           />
                         </div>
+
                         <div style={{ marginBottom: '14px' }}>
                           <label className="input-label-styled">Description / Criteria</label>
                           <textarea
@@ -1493,12 +1655,107 @@ export default function App() {
                             rows={2}
                             value={newCatDesc}
                             onChange={(e) => setNewCatDesc(e.target.value)}
-                            placeholder="Brief description for voters..."
+                            placeholder="Brief description for attendees and presentation..."
                           />
                         </div>
+
+                        <div style={{ marginBottom: '14px', background: '#ffffff', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                          <label className="input-label-styled" style={{ marginBottom: '8px', display: 'block' }}>
+                            Award Mode / Type
+                          </label>
+                          <div style={{ display: 'flex', gap: '20px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem' }}>
+                              <input
+                                type="radio"
+                                name="award_type"
+                                value="VOTING"
+                                checked={newCatAwardType === 'VOTING'}
+                                onChange={() => setNewCatAwardType('VOTING')}
+                              />
+                              <span>🗳️ <strong>Faculty Voted Award</strong> (Ballot Election)</span>
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem' }}>
+                              <input
+                                type="radio"
+                                name="award_type"
+                                value="MANUAL"
+                                checked={newCatAwardType === 'MANUAL'}
+                                onChange={() => setNewCatAwardType('MANUAL')}
+                              />
+                              <span>🎖️ <strong>Special / Manual Award</strong> (Executive Honors)</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {newCatAwardType === 'MANUAL' && (
+                          <div style={{ background: '#fdfbf7', padding: '16px', borderRadius: '8px', border: '1px solid #e6b94a', marginBottom: '16px' }}>
+                            <h5 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#9c6f1e' }}>
+                              🎖️ Manual Award Honors Configuration
+                            </h5>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                              <div>
+                                <label className="input-label-styled">Recipient / Honoree Name(s) *</label>
+                                <input
+                                  type="text"
+                                  className="input-styled"
+                                  value={newCatWinnerName}
+                                  onChange={(e) => setNewCatWinnerName(e.target.value)}
+                                  placeholder="e.g. Dr. M. O. Yusuf (or joint: Alice; Bob)"
+                                  required={newCatAwardType === 'MANUAL'}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="input-label-styled">Department / Affiliation</label>
+                                <input
+                                  type="text"
+                                  className="input-styled"
+                                  value={newCatWinnerDept}
+                                  onChange={(e) => setNewCatWinnerDept(e.target.value)}
+                                  placeholder="e.g. Executive Directorate"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="input-label-styled">Presentation Percentage Score</label>
+                                <input
+                                  type="text"
+                                  className="input-styled"
+                                  value={newCatPercentage}
+                                  onChange={(e) => setNewCatPercentage(e.target.value)}
+                                  placeholder="100.0"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="input-label-styled">Honors Citation / Reason for Recognition</label>
+                              <textarea
+                                className="input-styled"
+                                rows={2}
+                                value={newCatCitation}
+                                onChange={(e) => setNewCatCitation(e.target.value)}
+                                placeholder="e.g. For exemplary dedication, pioneering rural development and 25 years of outstanding leadership."
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button type="button" className="btn-outline" onClick={() => setShowAddCatForm(false)}>Cancel</button>
-                          <button type="submit" className="btn-solid-primary" style={{ width: 'auto' }}>Save Award</button>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={() => {
+                              setShowAddCatForm(false);
+                              setEditingCatId(null);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button type="submit" className="btn-solid-primary" style={{ width: 'auto' }}>
+                            {editingCatId ? 'Save Changes' : 'Create Award'}
+                          </button>
                         </div>
                       </form>
                     )}
@@ -1506,14 +1763,44 @@ export default function App() {
                     {adminCategories.map((cat, idx) => (
                       <div key={cat.id} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '16px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <strong>#{idx + 1} {cat.title} {!cat.is_active && <span style={{ color: 'var(--color-red)', fontSize: '0.75rem' }}>(Disabled)</span>}</strong>
-                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{cat.description}</p>
+                          <strong>
+                            #{idx + 1} {cat.title}{' '}
+                            {cat.award_type === 'MANUAL' && (
+                              <span style={{ background: '#fef3c7', color: '#92400e', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                                🎖️ Special Award
+                              </span>
+                            )}{' '}
+                            {!cat.is_active && (
+                              <span style={{ color: 'var(--color-red)', fontSize: '0.75rem' }}>(Disabled)</span>
+                            )}
+                          </strong>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>{cat.description}</p>
+                          {cat.award_type === 'MANUAL' && cat.manual_winner_name && (
+                            <p style={{ fontSize: '0.8rem', color: '#b45309', margin: '4px 0 0 0' }}>
+                              Honoree: <strong>{cat.manual_winner_name}</strong> {cat.manual_citation ? `— "${cat.manual_citation}"` : ''}
+                            </p>
+                          )}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button className="btn-outline" onClick={() => handleToggleCatActive(cat.id, cat.is_active)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                          <button
+                            className="btn-outline"
+                            onClick={() => handleEditCategory(cat)}
+                            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn-outline"
+                            onClick={() => handleToggleCatActive(cat.id, cat.is_active)}
+                            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                          >
                             {cat.is_active ? 'Disable' : 'Enable'}
                           </button>
-                          <button className="btn-outline" onClick={() => handleDeleteCategory(cat.id, cat.title)} style={{ fontSize: '0.75rem', padding: '4px 10px', color: 'var(--color-red)' }}>
+                          <button
+                            className="btn-outline"
+                            onClick={() => handleDeleteCategory(cat.id, cat.title)}
+                            style={{ fontSize: '0.75rem', padding: '4px 10px', color: 'var(--color-red)' }}
+                          >
                             Delete
                           </button>
                         </div>
