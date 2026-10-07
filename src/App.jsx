@@ -555,7 +555,12 @@ export default function App() {
       isOpen: true,
       type,
       voter,
-      reason: type === 'invalidate' ? 'Impersonation dispute / re-vote requested by voter' : 'Identified as non-faculty / ineligible'
+      reason:
+        type === 'invalidate'
+          ? 'Impersonation dispute / re-vote requested by voter'
+          : type === 'restore'
+          ? 'Verified faculty member / Reinstate voting eligibility'
+          : 'Identified as non-faculty / ineligible'
     });
   };
 
@@ -563,9 +568,12 @@ export default function App() {
     if (!disputeModal.voter) return;
     setIsProcessingDispute(true);
     const staffId = disputeModal.voter.staff_id;
-    const endpoint = disputeModal.type === 'invalidate'
-      ? apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/invalidate`)
-      : apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/revoke`);
+    let endpoint = apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/revoke`);
+    if (disputeModal.type === 'invalidate') {
+      endpoint = apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/invalidate`);
+    } else if (disputeModal.type === 'restore') {
+      endpoint = apiUrl(`/api/admin/voters/${encodeURIComponent(staffId)}/restore`);
+    }
 
     try {
       const res = await fetch(endpoint, {
@@ -1573,25 +1581,27 @@ export default function App() {
                     ⚙️ Election Controls
                   </button>
 
-                  <button
-                    className="btn-outline"
-                    onClick={() => {
-                      setShowAdminModal(false);
-                      setView('reveal');
-                      window.history.pushState({}, '', '/admin/results-reveal');
-                    }}
-                    style={{
-                      background: 'linear-gradient(135deg, #1e1708 0%, #36290e 100%)',
-                      borderColor: '#e6b94a',
-                      color: '#fff3b0',
-                      fontWeight: 600,
-                      boxShadow: '0 2px 10px rgba(230, 185, 74, 0.3)',
-                      marginLeft: 'auto'
-                    }}
-                    title="Launch Projector-Ready Oscars Results Presentation"
-                  >
-                    Result Reveal
-                  </button>
+                  {(electionStatus === 'CLOSED' || isExpired) && (
+                    <button
+                      className="btn-outline"
+                      onClick={() => {
+                        setShowAdminModal(false);
+                        setView('reveal');
+                        window.history.pushState({}, '', '/admin/results-reveal');
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #1e1708 0%, #36290e 100%)',
+                        borderColor: '#e6b94a',
+                        color: '#fff3b0',
+                        fontWeight: 600,
+                        boxShadow: '0 2px 10px rgba(230, 185, 74, 0.3)',
+                        marginLeft: 'auto'
+                      }}
+                      title="Launch Projector-Ready Oscars Results Presentation"
+                    >
+                      Result Reveal
+                    </button>
+                  )}
                 </div>
 
                 {/* TAB 1: Live Results */}
@@ -2075,7 +2085,14 @@ export default function App() {
                                         Revoke
                                       </button>
                                     ) : (
-                                      <span style={{ fontSize: '0.72rem', color: 'var(--color-red)', fontWeight: 600 }}>Revoked</span>
+                                      <button
+                                        className="btn-table-action success"
+                                        onClick={() => handleOpenDispute(v, 'restore')}
+                                        title="Restore voting eligibility for this faculty member"
+                                      >
+                                        <UserCheck size={12} />
+                                        Reinstate
+                                      </button>
                                     )}
                                   </div>
                                 </td>
@@ -2181,7 +2198,7 @@ export default function App() {
                           <tbody>
                             {adminAuditLogs.map((log) => {
                               let tagClass = 'audit-tag-setting';
-                              if (log.action_type === 'QUICK_ADD_FACULTY') tagClass = 'audit-tag-quick-add';
+                              if (log.action_type === 'QUICK_ADD_FACULTY' || log.action_type === 'RESTORE_ELIGIBILITY') tagClass = 'audit-tag-quick-add';
                               else if (log.action_type === 'INVALIDATE_BALLOT') tagClass = 'audit-tag-invalidate';
                               else if (log.action_type === 'REVOKE_ELIGIBILITY') tagClass = 'audit-tag-revoke';
                               else if (log.action_type === 'RESET_ELECTION') tagClass = 'audit-tag-reset';
@@ -2428,7 +2445,11 @@ export default function App() {
           <div className="modal-sheet-card" style={{ maxWidth: '520px' }}>
             <div className="modal-sheet-header">
               <h2>
-                {disputeModal.type === 'invalidate' ? '🔄 Invalidate Ballot & Allow Re-Vote' : '🚫 Revoke Eligibility (Non-Faculty)'}
+                {disputeModal.type === 'invalidate'
+                  ? '🔄 Invalidate Ballot & Allow Re-Vote'
+                  : disputeModal.type === 'restore'
+                  ? '✅ Reinstate Faculty Voter Eligibility'
+                  : '🚫 Revoke Eligibility (Non-Faculty)'}
               </h2>
               <button className="btn-outline" onClick={() => setDisputeModal({ isOpen: false, type: 'invalidate', voter: null, reason: '' })} style={{ border: 'none', padding: '6px' }}>
                 <X size={20} />
@@ -2436,12 +2457,20 @@ export default function App() {
             </div>
 
             <div className="modal-sheet-body">
-              <div className={`alert-card ${disputeModal.type === 'invalidate' ? 'warning' : 'error'}`} style={{ marginBottom: '16px' }}>
-                <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div className={`alert-card ${disputeModal.type === 'invalidate' ? 'warning' : disputeModal.type === 'restore' ? 'success' : 'error'}`} style={{ marginBottom: '16px' }}>
+                {disputeModal.type === 'restore' ? (
+                  <UserCheck size={20} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--color-green)' }} />
+                ) : (
+                  <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                )}
                 <span>
                   {disputeModal.type === 'invalidate' ? (
                     <>
                       This will permanently <strong>purge all votes cast</strong> under receipt <code>{disputeModal.voter.receipt_code || 'N/A'}</code> and reset <strong>{disputeModal.voter.full_name}</strong> ({disputeModal.voter.staff_id}) so they can cast their ballot again.
+                    </>
+                  ) : disputeModal.type === 'restore' ? (
+                    <>
+                      This will reverse the revocation and <strong>reinstate voting eligibility</strong> for <strong>{disputeModal.voter.full_name}</strong> ({disputeModal.voter.staff_id}). They will immediately be able to log in and cast their ballot.
                     </>
                   ) : (
                     <>
@@ -2458,7 +2487,7 @@ export default function App() {
                   rows={3}
                   value={disputeModal.reason}
                   onChange={(e) => setDisputeModal({ ...disputeModal, reason: e.target.value })}
-                  placeholder="State reason for audit trail (e.g., Staff reported impersonation at 2:15 PM)..."
+                  placeholder="State reason for audit trail (e.g., Verified eligible faculty member)..."
                   required
                 />
               </div>
@@ -2479,11 +2508,19 @@ export default function App() {
                 disabled={isProcessingDispute || !disputeModal.reason.trim()}
                 style={{
                   width: 'auto',
-                  background: disputeModal.type === 'invalidate' ? 'var(--color-amber)' : 'var(--color-red)'
+                  background: disputeModal.type === 'invalidate' ? 'var(--color-amber)' : disputeModal.type === 'restore' ? 'var(--color-green)' : 'var(--color-red)'
                 }}
               >
-                {disputeModal.type === 'invalidate' ? <RotateCcw size={16} /> : <UserX size={16} />}
-                <span>{isProcessingDispute ? 'Executing...' : disputeModal.type === 'invalidate' ? 'Confirm Invalidate & Reset' : 'Confirm Revoke Eligibility'}</span>
+                {disputeModal.type === 'invalidate' ? <RotateCcw size={16} /> : disputeModal.type === 'restore' ? <UserCheck size={16} /> : <UserX size={16} />}
+                <span>
+                  {isProcessingDispute
+                    ? 'Executing...'
+                    : disputeModal.type === 'invalidate'
+                    ? 'Confirm Invalidate & Reset'
+                    : disputeModal.type === 'restore'
+                    ? 'Confirm Reinstate Eligibility'
+                    : 'Confirm Revoke Eligibility'}
+                </span>
               </button>
             </div>
           </div>
