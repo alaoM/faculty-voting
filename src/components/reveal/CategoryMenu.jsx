@@ -46,7 +46,7 @@ export default function CategoryMenu({
         {categories.map((cat, idx) => {
           const isRevealed = revealedCategoryIds.has(cat.id);
           const isManual = Boolean(cat.isManualAward || cat.awardType === 'MANUAL');
-          const nomineeCount = cat.nominees?.length || 0;
+          const nomineeCount = isManual ? (cat.nominees?.length || 0) : Math.min(6, cat.nominees?.length || 0);
 
           return (
             <div
@@ -72,7 +72,11 @@ export default function CategoryMenu({
 
               <div className="reveal-card-meta">
                 <span className="reveal-card-count">
-                  {isManual ? 'Executive Honors' : `${nomineeCount} ${nomineeCount === 1 ? 'nominee' : 'nominees'}`}
+                  {isManual
+                    ? 'Executive Honors'
+                    : nomineeCount >= 6
+                    ? 'Top 6 Nominees'
+                    : `Top ${nomineeCount} ${nomineeCount === 1 ? 'Nominee' : 'Nominees'}`}
                 </span>
                 {isRevealed ? (
                   <span className="reveal-card-revealed-tag">

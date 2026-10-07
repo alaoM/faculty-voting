@@ -23,7 +23,8 @@ import {
   History,
   Trophy,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  Download
 } from 'lucide-react';
 import ResultsReveal from './components/reveal/ResultsReveal';
 
@@ -633,6 +634,73 @@ export default function App() {
     } finally {
       setIsSyncingRoster(false);
     }
+  };
+
+  const handleExportRoster = (targetStatus = 'CURRENT') => {
+    let listToExport = adminVoters;
+
+    if (targetStatus === 'VOTED') {
+      listToExport = adminVoters.filter((v) => v.has_voted === 1);
+    } else if (targetStatus === 'PENDING' || targetStatus === 'NOT_VOTED') {
+      listToExport = adminVoters.filter((v) => !v.has_voted && v.is_eligible);
+    } else if (targetStatus === 'INELIGIBLE') {
+      listToExport = adminVoters.filter((v) => !v.is_eligible);
+    } else if (targetStatus === 'MANUAL') {
+      listToExport = adminVoters.filter((v) => Boolean(v.is_manual));
+    } else if (targetStatus === 'CURRENT') {
+      const q = (rosterFilterQuery || '').toLowerCase().trim();
+      listToExport = adminVoters.filter((v) => {
+        const matchesQuery = !q ||
+          v.staff_id.toLowerCase().includes(q) ||
+          v.full_name.toLowerCase().includes(q) ||
+          (v.department && v.department.toLowerCase().includes(q));
+        if (!matchesQuery) return false;
+
+        if (rosterFilterStatus === 'VOTED') return v.has_voted === 1;
+        if (rosterFilterStatus === 'PENDING') return !v.has_voted && v.is_eligible;
+        if (rosterFilterStatus === 'MANUAL') return Boolean(v.is_manual);
+        if (rosterFilterStatus === 'INELIGIBLE') return !v.is_eligible;
+        return true;
+      });
+    }
+
+    if (listToExport.length === 0) {
+      alert('No faculty records match the selected export criteria.');
+      return;
+    }
+
+    const headers = ['Staff ID', 'Faculty Member Name', 'Department', 'Division', 'Voting Status', 'Receipt Code', 'Voted At', 'Eligibility', 'Registration Type'];
+    const csvRows = listToExport.map((v) => {
+      let votingStatus = 'NOT VOTED';
+      if (!v.is_eligible) votingStatus = 'INELIGIBLE';
+      else if (v.has_voted) votingStatus = 'VOTED';
+
+      return [
+        `"${(v.staff_id || '').replace(/"/g, '""')}"`,
+        `"${(v.full_name || '').replace(/"/g, '""')}"`,
+        `"${(v.department || 'ARMTI').replace(/"/g, '""')}"`,
+        `"${(v.division || '').replace(/"/g, '""')}"`,
+        `"${votingStatus}"`,
+        `"${(v.receipt_code || '').replace(/"/g, '""')}"`,
+        `"${(v.voted_at || '').replace(/"/g, '""')}"`,
+        `"${v.is_eligible ? 'Eligible' : 'Ineligible'}"`,
+        `"${v.is_manual ? 'Emergency Bypass' : 'Roster Sync'}"`
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...csvRows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileLabel = targetStatus === 'CURRENT'
+      ? (rosterFilterStatus === 'ALL' ? 'Full_Roster' : rosterFilterStatus)
+      : targetStatus;
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ARMTI_Faculty_Roster_${fileLabel}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleAddCategorySubmit = async (e) => {
@@ -1522,7 +1590,7 @@ export default function App() {
                     }}
                     title="Launch Projector-Ready Oscars Results Presentation"
                   >
-                    ✨ Launch Oscars Reveal Stage
+                    Result Reveal
                   </button>
                 </div>
 
@@ -1828,6 +1896,24 @@ export default function App() {
                           <UserPlus size={15} />
                           + Quick Add (Emergency Bypass)
                         </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => handleExportRoster('CURRENT')}
+                          title="Export currently filtered faculty list to CSV"
+                          style={{
+                            fontSize: '0.82rem',
+                            borderColor: '#059669',
+                            color: '#065f46',
+                            background: '#ecfdf5',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Download size={14} />
+                          Export {rosterFilterStatus === 'ALL' ? 'Roster' : rosterFilterStatus === 'VOTED' ? 'Voted' : rosterFilterStatus === 'PENDING' ? 'Not Voted' : rosterFilterStatus} (CSV)
+                        </button>
                         <button className="btn-outline" onClick={handleSyncGoogleSheet} disabled={isSyncingRoster} style={{ fontSize: '0.82rem' }}>
                           <RefreshCw size={14} className={isSyncingRoster ? 'spin' : ''} />
                           {isSyncingRoster ? 'Syncing...' : 'Sync Sheet'}
@@ -1835,8 +1921,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Filter controls */}
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                    {/* Filter controls & Quick Export bar */}
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
                       <input
                         type="text"
                         className="input-styled"
@@ -1845,11 +1931,11 @@ export default function App() {
                         onChange={(e) => setRosterFilterQuery(e.target.value)}
                         style={{ flex: 1, minWidth: '220px' }}
                       />
-                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto' }}>
+                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', alignItems: 'center' }}>
                         {[
                           { id: 'ALL', label: 'All' },
                           { id: 'VOTED', label: 'Voted' },
-                          { id: 'PENDING', label: 'Pending' },
+                          { id: 'PENDING', label: 'Not Voted' },
                           { id: 'MANUAL', label: 'Quick-Added' },
                           { id: 'INELIGIBLE', label: 'Ineligible' }
                         ].map((btn) => (
@@ -1868,6 +1954,28 @@ export default function App() {
                             {btn.label}
                           </button>
                         ))}
+
+                        {/* Direct Export Shortcut Dropdown/Actions */}
+                        <div style={{ display: 'inline-flex', gap: '4px', marginLeft: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={() => handleExportRoster('VOTED')}
+                            title="Export all faculty who have voted"
+                            style={{ fontSize: '0.74rem', padding: '5px 8px', color: '#15803d', borderColor: '#86efac', background: '#f0fdf4' }}
+                          >
+                            <Download size={12} /> Voted
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={() => handleExportRoster('NOT_VOTED')}
+                            title="Export all faculty who have NOT voted yet"
+                            style={{ fontSize: '0.74rem', padding: '5px 8px', color: '#b45309', borderColor: '#fde68a', background: '#fffbeb' }}
+                          >
+                            <Download size={12} /> Not Voted
+                          </button>
+                        </div>
                       </div>
                     </div>
 

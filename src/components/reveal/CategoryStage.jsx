@@ -52,7 +52,8 @@ export default function CategoryStage({
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
-  const rawNominees = category?.nominees || [];
+  // Limit to top 6 nominees for projector stage
+  const rawNominees = (category?.nominees || []).slice(0, 6);
   const totalVotes = category?.totalVotes || 0;
 
   // Compute highest vote count or max percentage
@@ -286,7 +287,13 @@ export default function CategoryStage({
     }
     switch (stageState) {
       case 'ready':
-        return isManualAward ? 'Special Recognition Honoree' : 'The nominees';
+        return isManualAward
+          ? 'Special Recognition Honoree'
+          : rawNominees.length >= 6
+          ? 'Top 6 Nominees'
+          : rawNominees.length > 1
+          ? `Top ${rawNominees.length} Nominees`
+          : 'The Nominee';
       case 'counting':
         return isManualAward ? 'Conferring Institutional Honors' : 'Counting the votes';
       case 'ranking':
