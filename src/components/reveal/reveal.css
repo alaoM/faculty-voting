@@ -829,3 +829,295 @@
     transition: none !important;
   }
 }
+
+/* ==========================================================================
+   WINNER AVATAR & OSCAR SPOTLIGHT MODAL (WITH NO-IMAGE DESIGN)
+   ========================================================================== */
+
+.reveal-avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.reveal-avatar-frame {
+  position: relative;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--reveal-gold-light) 0%, var(--reveal-gold-mid) 45%, var(--reveal-gold-dark) 100%);
+  box-shadow: 0 0 16px var(--reveal-gold-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.reveal-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: #14121b;
+}
+
+/* --- Fallback "No Image Design" --- */
+.reveal-avatar-no-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #2f2515 0%, #17131e 70%, #0c0a12 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(230, 185, 74, 0.4);
+}
+
+.no-img-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 120%, rgba(230, 185, 74, 0.35) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.no-img-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  z-index: 2;
+}
+
+.no-img-trophy {
+  color: var(--reveal-gold-mid);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.no-img-initials {
+  font-family: var(--reveal-serif);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: linear-gradient(180deg, var(--reveal-gold-light), var(--reveal-gold-mid));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  line-height: 1;
+}
+
+/* --- Sizes --- */
+.reveal-avatar-wrapper.size-sm .reveal-avatar-frame {
+  width: 44px;
+  height: 44px;
+  padding: 2px;
+}
+.reveal-avatar-wrapper.size-sm .no-img-initials {
+  font-size: 0.72rem;
+}
+
+.reveal-avatar-wrapper.size-md .reveal-avatar-frame {
+  width: 88px;
+  height: 88px;
+  padding: 3px;
+}
+.reveal-avatar-wrapper.size-md .no-img-initials {
+  font-size: 1.15rem;
+}
+
+.reveal-avatar-wrapper.size-lg .reveal-avatar-frame {
+  width: 120px;
+  height: 120px;
+  padding: 4px;
+}
+.reveal-avatar-wrapper.size-lg .no-img-initials {
+  font-size: 1.6rem;
+}
+
+.reveal-avatar-wrapper.size-hero .reveal-avatar-frame {
+  width: clamp(160px, 25vh, 230px);
+  height: clamp(160px, 25vh, 230px);
+  padding: 6px;
+  box-shadow: 0 0 35px rgba(230, 185, 74, 0.5), 0 0 70px rgba(230, 185, 74, 0.25);
+  animation: avatarGlow 2.4s ease-in-out infinite alternate;
+}
+.reveal-avatar-wrapper.size-hero .no-img-initials {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+}
+
+@keyframes avatarGlow {
+  from {
+    box-shadow: 0 0 25px rgba(230, 185, 74, 0.4), 0 0 50px rgba(230, 185, 74, 0.15);
+  }
+  to {
+    box-shadow: 0 0 55px rgba(255, 240, 180, 0.8), 0 0 95px rgba(230, 185, 74, 0.4);
+  }
+}
+
+/* Badge */
+.reveal-avatar-badge {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, var(--reveal-gold-light), var(--reveal-gold-mid));
+  color: #241802;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 4px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.08em;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+/* Row Avatar placement */
+.reveal-row-avatar {
+  margin-right: 12px;
+}
+.reveal-nominee-info {
+  display: flex;
+  align-items: center;
+}
+.reveal-nominee-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Summary Cards Row of Avatars */
+.reveal-summary-avatars-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.reveal-summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+}
+.reveal-summary-card .reveal-summary-cat-title {
+  text-align: center;
+}
+.reveal-summary-card .reveal-summary-winner-name {
+  text-align: center;
+}
+
+/* --- Oscar Winner Spotlight Modal --- */
+.reveal-winner-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 6, 10, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: modalFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.reveal-winner-modal-card {
+  background: linear-gradient(160deg, rgba(27, 23, 36, 0.95), rgba(13, 11, 18, 0.98));
+  border: 1px solid var(--reveal-gold-mid);
+  border-radius: 26px;
+  padding: 36px 44px 30px;
+  box-shadow: 0 0 60px rgba(230, 185, 74, 0.38), 0 25px 70px rgba(0, 0, 0, 0.85);
+  max-width: 540px;
+  width: 92%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  cursor: default;
+}
+
+.reveal-winner-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--reveal-text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.reveal-winner-modal-close:hover {
+  color: var(--reveal-gold-light);
+  transform: scale(1.1);
+}
+
+.reveal-winner-modal-avatars {
+  margin-bottom: 22px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reveal-winner-modal-cat {
+  color: var(--reveal-text-muted);
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.reveal-winner-modal-name {
+  font-family: var(--reveal-serif);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  margin: 0 0 10px;
+  line-height: 1.15;
+}
+
+.reveal-winner-modal-dept {
+  font-size: 1.05rem;
+  color: var(--reveal-text-muted);
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.reveal-winner-modal-stat-pill {
+  background: rgba(230, 185, 74, 0.14);
+  border: 1px solid var(--reveal-card-border);
+  color: var(--reveal-gold-light);
+  border-radius: 999px;
+  padding: 8px 22px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+

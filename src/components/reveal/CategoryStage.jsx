@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { ChevronLeft, Grid, RotateCcw, Award, Sparkles, Medal } from 'lucide-react';
+import { ChevronLeft, Grid, RotateCcw, Award, Sparkles, Medal, Trophy, X } from 'lucide-react';
+import WinnerAvatar from './WinnerAvatar';
 
 export default function CategoryStage({
   category,
@@ -18,6 +19,7 @@ export default function CategoryStage({
   const [barWidths, setBarWidths] = useState({});
   const [isDimmedNonWinners, setIsDimmedNonWinners] = useState(isAlreadyRevealed);
   const [isWinnerHighlighted, setIsWinnerHighlighted] = useState(isAlreadyRevealed);
+  const [showSpotlightModal, setShowSpotlightModal] = useState(false);
 
   const chartContainerRef = useRef(null);
   const [viewportHeight, setViewportHeight] = useState(400);
@@ -219,6 +221,12 @@ export default function CategoryStage({
       if (onTriggerFlash) onTriggerFlash();
       if (onTriggerConfetti) onTriggerConfetti();
 
+      // Automatically pop up the Oscars Winner Spotlight Modal with photo/fallback
+      const spotlightTimer = setTimeout(() => {
+        setShowSpotlightModal(true);
+      }, 700);
+      timeoutsRef.current.push(spotlightTimer);
+
       // Final done state
       const doneTimer = setTimeout(() => {
         setStageState('done');
@@ -249,6 +257,7 @@ export default function CategoryStage({
       return; // Ignore while animating
     }
     clearAllTimers();
+    setShowSpotlightModal(false);
     setStageState('ready');
     setDisplayedPercentages({});
     setBarWidths({});
@@ -263,7 +272,9 @@ export default function CategoryStage({
     const handleKeyDown = (e) => {
       if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'PageDown') {
         e.preventDefault();
-        if (stageState === 'ready') {
+        if (showSpotlightModal) {
+          setShowSpotlightModal(false);
+        } else if (stageState === 'ready') {
           startRevealSequence();
         }
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
@@ -271,14 +282,18 @@ export default function CategoryStage({
         handleReplay();
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        clearAllTimers();
-        onBackToMenu();
+        if (showSpotlightModal) {
+          setShowSpotlightModal(false);
+        } else {
+          clearAllTimers();
+          onBackToMenu();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stageState, startRevealSequence, handleReplay, onBackToMenu, clearAllTimers]);
+  }, [stageState, showSpotlightModal, startRevealSequence, handleReplay, onBackToMenu, clearAllTimers]);
 
   // Compute status line text based on current animation state
   const getStatusText = () => {
@@ -397,10 +412,20 @@ export default function CategoryStage({
                 {/* Content Overlay */}
                 <div className="reveal-row-content">
                   <div className="reveal-nominee-info">
-                    <span className="reveal-nominee-name">{nom.name}</span>
-                    <span className="reveal-nominee-dept">
-                      {nom.citation || nom.department || 'ARMTI Faculty'}
-                    </span>
+                    {isNomineeWinner && (
+                      <WinnerAvatar
+                        name={nom.name}
+                        size="sm"
+                        showBadge={false}
+                        className="reveal-row-avatar"
+                      />
+                    )}
+                    <div className="reveal-nominee-text-wrap">
+                      <span className="reveal-nominee-name">{nom.name}</span>
+                      <span className="reveal-nominee-dept">
+                        {nom.citation || nom.department || 'ARMTI Faculty'}
+                      </span>
+                    </div>
                   </div>
 
                   {hasPctShown && (
@@ -425,6 +450,63 @@ export default function CategoryStage({
         })}
       </div>
 
+      {/* Oscar Winner Spotlight Modal Overlay */}
+      {showSpotlightModal && winners.length > 0 && (
+        <div
+          className="reveal-winner-modal-overlay"
+          onClick={() => setShowSpotlightModal(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="reveal-winner-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="reveal-winner-modal-close"
+              onClick={() => setShowSpotlightModal(false)}
+              title="Close spotlight (Esc or Space)"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="reveal-winner-modal-avatars">
+              {winners.map((w, idx) => (
+                <WinnerAvatar
+                  key={w.id || idx}
+                  name={w.name}
+                  size="hero"
+                  showBadge={true}
+                  badgeText={isManualAward ? 'HONOREE' : 'WINNER'}
+                />
+              ))}
+            </div>
+
+            <div className="reveal-winner-modal-cat">
+              {isManualAward ? '★ Special Recognition Award' : category.name}
+            </div>
+
+            <h2 className="reveal-winner-modal-name gold-gradient-text serif-display">
+              {winners.map((w) => w.name).join(' & ')}
+            </h2>
+
+            <div className="reveal-winner-modal-dept">
+              {winners[0]?.citation || winners[0]?.department || category.citation || 'ARMTI Faculty'}
+            </div>
+
+            <div className="reveal-winner-modal-stat-pill">
+              <Trophy size={16} />
+              <span>
+                {isManualAward
+                  ? 'Executive Honors Selection'
+                  : `${winners[0]?.votes || maxVotes} Votes • ${winners[0]?.percentage || maxPct}% Majority`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer Controls & Hints */}
       <footer className="reveal-stage-footer">
         <div>
@@ -434,14 +516,26 @@ export default function CategoryStage({
             </div>
           )}
           {(stageState === 'winner' || stageState === 'done') && (
-            <button
-              type="button"
-              className="reveal-btn-secondary"
-              onClick={handleReplay}
-              title="Replay category reveal (Left Arrow)"
-            >
-              <RotateCcw size={14} /> Replay Category (Left Arrow)
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="reveal-btn-secondary"
+                onClick={handleReplay}
+                title="Replay category reveal (Left Arrow)"
+              >
+                <RotateCcw size={14} /> Replay
+              </button>
+              {winners.length > 0 && !showSpotlightModal && (
+                <button
+                  type="button"
+                  className="reveal-btn-secondary"
+                  onClick={() => setShowSpotlightModal(true)}
+                  title="View Winner Spotlight"
+                >
+                  <Trophy size={14} /> Spotlight
+                </button>
+              )}
+            </div>
           )}
         </div>
 

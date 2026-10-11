@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trophy, ChevronLeft, Award, Sparkles, Printer, Medal } from 'lucide-react';
+import WinnerAvatar from './WinnerAvatar';
 
 export default function WinnersSummary({
   eventInfo,
@@ -74,6 +75,19 @@ export default function WinnersSummary({
               key={cat.id}
               className={`reveal-summary-card ${hasWinner ? 'has-winner' : ''}`}
             >
+              {hasWinner && (
+                <div className="reveal-summary-avatars-row">
+                  {winners.map((w, wIdx) => (
+                    <WinnerAvatar
+                      key={w.id || wIdx}
+                      name={w.name}
+                      size="md"
+                      showBadge={false}
+                    />
+                  ))}
+                </div>
+              )}
+
               <div>
                 <div className="reveal-summary-cat-title">
                   {isManualAward ? '★ Special Recognition Award' : `Category ${idx + 1}: ${cat.name}`}
