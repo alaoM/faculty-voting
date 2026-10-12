@@ -494,15 +494,6 @@ export default function CategoryStage({
             <div className="reveal-winner-modal-dept">
               {winners[0]?.citation || winners[0]?.department || category.citation || 'ARMTI Faculty'}
             </div>
-
-            <div className="reveal-winner-modal-stat-pill">
-              <Trophy size={16} />
-              <span>
-                {isManualAward
-                  ? 'Executive Honors Selection'
-                  : `${winners[0]?.votes || maxVotes} Votes • ${winners[0]?.percentage || maxPct}% Majority`}
-              </span>
-            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 // Pre-loaded mappings for the 20 refined gala award winner portraits
 export const REFINED_PORTRAITS = [
-  { name: 'Alao Miracle Olaoluwa', file: 'Alao Miracle Olaoluwa.jpg' },
+  { name: 'Alao Miracle Olaoluwa', file: 'Alao Miracle Olaoluwa.png' },
   { name: 'Dr Abigail Iyilade', file: 'Iyilade.jpg' },
   { name: 'Iyilade', file: 'Iyilade.jpg' },
   { name: 'Ajayi Rhoda Ohunene', file: 'Ajayi Rhoda Ohunene.jpg' },
@@ -20,7 +20,9 @@ export const REFINED_PORTRAITS = [
   { name: 'Odesola Oluwaseun', file: 'Odesola Oluwaseun.jpg' },
   { name: 'Olurinde Kingsley', file: 'Olurinde Kingsley.jpg' },
   { name: 'Olusegun Oni', file: 'Olusegun Oni.jpg' },
-  { name: 'Temidayo Ogunrinde', file: 'Temidayo Ogunrinde.jpg' }
+  { name: 'Temidayo Ogunrinde', file: 'Temidayo Ogunrinde.jpg' },
+  { name: 'Dr Olasore', file: 'Dr Olasore.jpg' },
+  { name: 'Olasore', file: 'Dr Olasore.jpg' }
 ];
 
 function normalize(str) {
