@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Settings,
   Lock,
@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   Tv,
   HelpCircle,
-  FileJson
+  FileJson,
+  Users,
+  Edit3
 } from 'lucide-react';
 
 export default function RevealSetup({
@@ -20,12 +22,16 @@ export default function RevealSetup({
   isLocked,
   isFrozen,
   frozenAt,
+  nomineeLimit = 6,
+  onUpdateNomineeLimit,
   onUpdateBranding,
   onToggleLock,
   onFreezeSnapshot,
   onUnfreezeSnapshot,
   onExportSnapshot,
   onLoadSnapshotFile,
+  categories = [],
+  onRenameNominee,
   onSeedDummyVotes,
   onCloseSetup
 }) {
@@ -33,8 +39,74 @@ export default function RevealSetup({
     name: eventInfo.name || '',
     faculty: eventInfo.faculty || '',
     tagline: eventInfo.tagline || '',
-    logoUrl: eventInfo.logoUrl || ''
+    logoUrl: eventInfo.logoUrl || '',
+    nomineeLimit: nomineeLimit || eventInfo.nomineeLimit || 6
   });
+
+  // Extract all distinct nominees currently appearing in categories
+  const allNomineeOptions = useMemo(() => {
+    const map = new Map();
+    categories.forEach((cat) => {
+      (cat.nominees || []).forEach((nom) => {
+        if (nom.name && !map.has(nom.name)) {
+          map.set(nom.name, {
+            name: nom.name,
+            id: nom.id && !nom.id.startsWith('nom-') && !nom.id.startsWith('manual-') ? nom.id : null,
+            department: nom.department || 'ARMTI Faculty'
+          });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories]);
+
+  const [renameData, setRenameData] = useState({
+    staffId: '',
+    oldName: '',
+    newName: '',
+    department: ''
+  });
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameSuccess, setRenameSuccess] = useState('');
+
+  const handleSelectNomineeForRename = (e) => {
+    const selectedName = e.target.value;
+    const found = allNomineeOptions.find((n) => n.name === selectedName);
+    if (found) {
+      setRenameData({
+        staffId: found.id || '',
+        oldName: found.name,
+        newName: found.name,
+        department: found.department || ''
+      });
+    } else {
+      setRenameData({ staffId: '', oldName: selectedName, newName: selectedName, department: '' });
+    }
+    setRenameSuccess('');
+  };
+
+  const handleRenameSubmit = async (e) => {
+    e.preventDefault();
+    if (!renameData.newName.trim()) return;
+    setIsRenaming(true);
+    setRenameSuccess('');
+    try {
+      if (onRenameNominee) {
+        const res = await onRenameNominee({
+          staffId: renameData.staffId || null,
+          oldName: renameData.oldName || null,
+          newName: renameData.newName.trim(),
+          department: renameData.department?.trim() || null
+        });
+        setRenameSuccess(`Updated to "${res.newName}" successfully across all ballots and presentation!`);
+        setTimeout(() => setRenameSuccess(''), 5000);
+      }
+    } catch (err) {
+      alert('Error updating nominee name: ' + err.message);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -46,11 +118,15 @@ export default function RevealSetup({
     setIsSaving(true);
     setSaveSuccess(false);
     try {
-      await onUpdateBranding(formData);
+      const parsedLimit = Math.max(1, parseInt(formData.nomineeLimit, 10) || 6);
+      await onUpdateBranding({ ...formData, nomineeLimit: parsedLimit });
+      if (onUpdateNomineeLimit) {
+        onUpdateNomineeLimit(parsedLimit);
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      alert('Failed to update branding: ' + err.message);
+      alert('Failed to update presentation settings: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -177,6 +253,79 @@ export default function RevealSetup({
           )}
         </div>
 
+        {/* Quick Nominee Name & Department Correction Tool */}
+        <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '10px', padding: '16px 20px', border: '1px solid rgba(214,170,70,0.2)', marginBottom: '24px' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: 'var(--reveal-gold-mid)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Edit3 size={18} /> Quick Nominee Name & Department Correction
+          </h3>
+          <p style={{ fontSize: '0.82rem', color: 'var(--reveal-text-muted)', margin: '0 0 14px 0', lineHeight: '1.4' }}>
+            Fix typographical errors, honorifics (e.g. Dr., Prof.), or departments directly. Updates automatically apply across all ballots, the roster, and the live awards presentation.
+          </p>
+
+          <form onSubmit={handleRenameSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label className="reveal-form-label" style={{ fontSize: '0.78rem' }}>1. Choose Nominee</label>
+                <select
+                  className="reveal-form-input"
+                  style={{ height: '38px', padding: '6px 10px', cursor: 'pointer' }}
+                  value={renameData.oldName}
+                  onChange={handleSelectNomineeForRename}
+                >
+                  <option value="">-- Select from current nominees --</option>
+                  {allNomineeOptions.map((nom, idx) => (
+                    <option key={`${nom.name}-${idx}`} value={nom.name}>
+                      {nom.name} ({nom.department || 'ARMTI'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="reveal-form-label" style={{ fontSize: '0.78rem' }}>2. Corrected Full Name</label>
+                <input
+                  type="text"
+                  className="reveal-form-input"
+                  style={{ height: '38px' }}
+                  placeholder="e.g. Prof. Babatunde Adeniyi"
+                  value={renameData.newName}
+                  onChange={(e) => setRenameData({ ...renameData, newName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="reveal-form-label" style={{ fontSize: '0.78rem' }}>3. Department (Optional)</label>
+                <input
+                  type="text"
+                  className="reveal-form-input"
+                  style={{ height: '38px' }}
+                  placeholder="e.g. Training & Development"
+                  value={renameData.department}
+                  onChange={(e) => setRenameData({ ...renameData, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="submit"
+                className="reveal-btn-secondary"
+                style={{ borderColor: 'var(--reveal-gold-mid)', color: 'var(--reveal-gold-light)', padding: '8px 18px', fontSize: '0.85rem' }}
+                disabled={isRenaming || !renameData.newName.trim()}
+              >
+                <Edit3 size={14} /> {isRenaming ? 'Updating Name...' : 'Apply Name Correction'}
+              </button>
+            </div>
+          </form>
+
+          {renameSuccess && (
+            <div style={{ color: '#22c55e', fontSize: '0.85rem', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(34, 197, 94, 0.1)', padding: '8px 12px', borderRadius: '6px' }}>
+              <CheckCircle2 size={16} /> {renameSuccess}
+            </div>
+          )}
+        </div>
+
         {/* Branding Form */}
         <form onSubmit={handleSubmit}>
           <div className="reveal-form-group">
@@ -225,9 +374,42 @@ export default function RevealSetup({
             />
           </div>
 
+          <div className="reveal-form-group">
+            <label className="reveal-form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={16} /> Number of Top Nominees to Show
+            </label>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                className="reveal-form-input"
+                style={{ width: '100px', textAlign: 'center', fontWeight: 'bold' }}
+                value={formData.nomineeLimit}
+                onChange={(e) => setFormData({ ...formData, nomineeLimit: e.target.value })}
+                required
+              />
+              <div className="reveal-preset-chips">
+                {[3, 5, 6, 8, 10].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    className={`reveal-preset-chip ${Number(formData.nomineeLimit) === num ? 'active' : ''}`}
+                    onClick={() => setFormData({ ...formData, nomineeLimit: num })}
+                  >
+                    Top {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span style={{ fontSize: '0.8rem', color: 'var(--reveal-text-muted)', marginTop: '4px', display: 'block' }}>
+              Controls how many top vote-receiving nominees are presented and ranked on stage during the award reveals.
+            </span>
+          </div>
+
           {saveSuccess && (
             <div style={{ color: '#22c55e', fontSize: '0.85rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={16} /> Branding changes saved successfully!
+              <CheckCircle2 size={16} /> Presentation settings saved successfully!
             </div>
           )}
 

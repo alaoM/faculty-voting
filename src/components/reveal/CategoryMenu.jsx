@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, Settings, Maximize2, Minimize2, Trophy, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Award, Settings, Maximize2, Minimize2, Trophy, RotateCcw, CheckCircle2, Users } from 'lucide-react';
 
 export default function CategoryMenu({
   eventInfo,
@@ -10,7 +10,9 @@ export default function CategoryMenu({
   onOpenWinners,
   onResetAllReveals,
   isFullscreen,
-  onToggleFullscreen
+  onToggleFullscreen,
+  nomineeLimit = 6,
+  onUpdateNomineeLimit
 }) {
   const allRevealed = categories.length > 0 && categories.every((cat) => revealedCategoryIds.has(cat.id));
   const revealedCount = categories.filter((cat) => revealedCategoryIds.has(cat.id)).length;
@@ -39,6 +41,61 @@ export default function CategoryMenu({
           <div className="diamond">❖</div>
           <div className="line" />
         </div>
+
+        {/* Interactive Top Nominees manual input toolbar */}
+        <div className="reveal-menu-toolbar">
+          <div className="reveal-limit-selector">
+            <span className="reveal-limit-selector-label">
+              <Users size={16} /> Top Nominees to Show:
+            </span>
+            <div className="reveal-limit-stepper-wrap">
+              <button
+                type="button"
+                className="reveal-stepper-btn"
+                onClick={() => onUpdateNomineeLimit?.(Math.max(1, nomineeLimit - 1))}
+                title="Decrease top nominees to show"
+                aria-label="Decrease nominees"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={nomineeLimit}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1) onUpdateNomineeLimit?.(Math.min(30, val));
+                }}
+                className="reveal-limit-input"
+                title="Manually type the number of top nominees to reveal"
+                aria-label="Top nominees input"
+              />
+              <button
+                type="button"
+                className="reveal-stepper-btn"
+                onClick={() => onUpdateNomineeLimit?.(Math.min(30, nomineeLimit + 1))}
+                title="Increase top nominees to show"
+                aria-label="Increase nominees"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="reveal-preset-chips">
+              {[3, 5, 6, 8, 10].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`reveal-preset-chip ${nomineeLimit === preset ? 'active' : ''}`}
+                  onClick={() => onUpdateNomineeLimit?.(preset)}
+                >
+                  Top {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </header>
 
       {/* Category Grid */}
@@ -46,7 +103,8 @@ export default function CategoryMenu({
         {categories.map((cat, idx) => {
           const isRevealed = revealedCategoryIds.has(cat.id);
           const isManual = Boolean(cat.isManualAward || cat.awardType === 'MANUAL');
-          const nomineeCount = isManual ? (cat.nominees?.length || 0) : Math.min(6, cat.nominees?.length || 0);
+          const totalNominees = cat.nominees?.length || 0;
+          const nomineeCount = isManual ? totalNominees : Math.min(nomineeLimit, totalNominees);
 
           return (
             <div
@@ -74,9 +132,9 @@ export default function CategoryMenu({
                 <span className="reveal-card-count">
                   {isManual
                     ? 'Executive Honors'
-                    : nomineeCount >= 6
-                    ? 'Top 6 Nominees'
-                    : `Top ${nomineeCount} ${nomineeCount === 1 ? 'Nominee' : 'Nominees'}`}
+                    : nomineeCount <= 1
+                    ? `${nomineeCount} Nominee`
+                    : `Top ${nomineeCount} Nominees`}
                 </span>
                 {isRevealed ? (
                   <span className="reveal-card-revealed-tag">

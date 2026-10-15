@@ -453,6 +453,8 @@
   margin: 4px 0;
   box-sizing: border-box;
   cursor: pointer;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .reveal-chart-row {
@@ -1112,5 +1114,226 @@
   font-style: italic;
   line-height: 1.25;
   opacity: 0.95;
+}
+
+/* ==========================================================================
+   CONFIGURABLE NOMINEE LIMIT CONTROLS (MENU, STAGE & SETUP)
+   ========================================================================== */
+
+/* Menu Toolbar & Limit Selector */
+.reveal-menu-toolbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.reveal-limit-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(22, 18, 30, 0.75);
+  border: 1px solid rgba(214, 170, 70, 0.3);
+  border-radius: 9999px;
+  padding: 6px 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.reveal-limit-selector:hover {
+  border-color: rgba(230, 185, 74, 0.6);
+  box-shadow: 0 4px 22px rgba(230, 185, 74, 0.15);
+}
+
+.reveal-limit-selector-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(0.8rem, 0.95vw, 0.92rem);
+  font-weight: 600;
+  color: var(--reveal-gold-light);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--reveal-serif);
+}
+
+/* Stepper Group */
+.reveal-limit-stepper-wrap {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(10, 8, 14, 0.9);
+  border: 1px solid rgba(214, 170, 70, 0.4);
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.reveal-stepper-btn {
+  background: transparent;
+  border: none;
+  color: var(--reveal-gold-mid);
+  width: 32px;
+  height: 32px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+.reveal-stepper-btn:hover {
+  background: rgba(230, 185, 74, 0.2);
+  color: #fff;
+}
+
+.reveal-stepper-btn:active {
+  transform: scale(0.92);
+}
+
+.reveal-limit-input {
+  width: 44px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  font-family: var(--reveal-serif);
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.reveal-limit-input::-webkit-outer-spin-button,
+.reveal-limit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.reveal-limit-input:focus {
+  background: rgba(230, 185, 74, 0.15);
+  box-shadow: inset 0 0 6px rgba(230, 185, 74, 0.35);
+}
+
+/* Preset Chips */
+.reveal-preset-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.reveal-preset-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(214, 170, 70, 0.25);
+  color: var(--reveal-text-muted);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.reveal-preset-chip:hover {
+  background: rgba(230, 185, 74, 0.15);
+  color: var(--reveal-gold-light);
+  border-color: rgba(230, 185, 74, 0.5);
+  transform: translateY(-1px);
+}
+
+.reveal-preset-chip.active {
+  background: linear-gradient(135deg, var(--reveal-gold-mid) 0%, var(--reveal-gold-dark) 100%);
+  color: #120f18;
+  border-color: var(--reveal-gold-light);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(230, 185, 74, 0.35);
+}
+
+/* Stage Header Inline Stepper Badge */
+.reveal-stage-limit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 14px;
+  padding: 3px 10px;
+  background: rgba(20, 17, 28, 0.85);
+  border: 1px solid rgba(214, 170, 70, 0.35);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  font-family: var(--reveal-sans);
+  vertical-align: middle;
+}
+
+.reveal-stage-limit-label {
+  font-size: clamp(0.72rem, 0.85vw, 0.82rem);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--reveal-gold-mid);
+  font-weight: 600;
+}
+
+.reveal-stage-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(214, 170, 70, 0.3);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.reveal-stage-step-btn {
+  background: transparent;
+  border: none;
+  color: var(--reveal-gold-light);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.reveal-stage-step-btn:hover {
+  background: rgba(230, 185, 74, 0.25);
+  color: #fff;
+}
+
+.reveal-stage-step-input {
+  width: 34px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  font-family: var(--reveal-serif);
+  -moz-appearance: textfield;
+}
+
+.reveal-stage-step-input::-webkit-outer-spin-button,
+.reveal-stage-step-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.reveal-stage-step-input:focus {
+  background: rgba(230, 185, 74, 0.2);
 }
 

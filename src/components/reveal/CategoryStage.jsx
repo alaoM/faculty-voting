@@ -11,7 +11,9 @@ export default function CategoryStage({
   onMarkRevealed,
   isAlreadyRevealed = false,
   onTriggerFlash,
-  onTriggerConfetti
+  onTriggerConfetti,
+  nomineeLimit = 6,
+  onUpdateNomineeLimit
 }) {
   // State Machine: 'ready' | 'counting' | 'ranking' | 'winner' | 'done'
   const [stageState, setStageState] = useState(isAlreadyRevealed ? 'done' : 'ready');
@@ -54,8 +56,8 @@ export default function CategoryStage({
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
-  // Limit to top 6 nominees for projector stage
-  const rawNominees = (category?.nominees || []).slice(0, 6);
+  // Limit nominees to user-configured top nominee count (can be customized on stage or globally)
+  const rawNominees = (category?.nominees || []).slice(0, nomineeLimit);
   const totalVotes = category?.totalVotes || 0;
 
   // Compute highest vote count or max percentage
@@ -112,14 +114,18 @@ export default function CategoryStage({
 
   // Determine row height dynamically based on nominee count and container height
   const rowCount = Math.max(1, rawNominees.length);
-  const calculatedHeight = Math.floor((viewportHeight - 8) / rowCount);
-  const rowHeight = rowCount <= 4
-    ? Math.max(82, Math.min(116, calculatedHeight))
-    : rowCount <= 7
-      ? Math.max(62, Math.min(82, calculatedHeight))
-      : Math.max(48, Math.min(62, calculatedHeight));
+  const calculatedHeight = Math.floor((viewportHeight - 10) / rowCount);
+  const rowHeight = rowCount <= 3
+    ? Math.max(86, Math.min(124, calculatedHeight))
+    : rowCount <= 5
+      ? Math.max(70, Math.min(94, calculatedHeight))
+      : rowCount <= 7
+        ? Math.max(56, Math.min(76, calculatedHeight))
+        : rowCount <= 10
+          ? Math.max(46, Math.min(58, calculatedHeight))
+          : Math.max(38, Math.min(48, calculatedHeight));
 
-  const nomineeSizeClass = rowCount <= 4 ? 'size-lg' : rowCount <= 7 ? 'size-md' : 'size-compact';
+  const nomineeSizeClass = rowCount <= 3 ? 'size-lg' : rowCount <= 6 ? 'size-md' : 'size-compact';
 
   // If already revealed initially, set instant state
   useEffect(() => {
@@ -304,8 +310,6 @@ export default function CategoryStage({
       case 'ready':
         return isManualAward
           ? 'Special Recognition Honoree'
-          : rawNominees.length >= 6
-          ? 'Top 6 Nominees'
           : rawNominees.length > 1
           ? `Top ${rawNominees.length} Nominees`
           : 'The Nominee';
@@ -359,6 +363,46 @@ export default function CategoryStage({
             <Award size={26} color="var(--reveal-gold-light)" />
           )}
           <span>{getStatusText()}</span>
+
+          {/* Interactive Top Nominees Stepper in Pre-Reveal State */}
+          {stageState === 'ready' && !isManualAward && (
+            <div className="reveal-stage-limit-badge" onClick={(e) => e.stopPropagation()}>
+              <span className="reveal-stage-limit-label">Show Top:</span>
+              <div className="reveal-stage-stepper">
+                <button
+                  type="button"
+                  className="reveal-stage-step-btn"
+                  onClick={() => onUpdateNomineeLimit?.(Math.max(1, nomineeLimit - 1))}
+                  title="Show fewer nominees"
+                  aria-label="Decrease nominees"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={nomineeLimit}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val >= 1) onUpdateNomineeLimit?.(Math.min(30, val));
+                  }}
+                  className="reveal-stage-step-input"
+                  title="Manually enter number of top nominees"
+                  aria-label="Number of top nominees"
+                />
+                <button
+                  type="button"
+                  className="reveal-stage-step-btn"
+                  onClick={() => onUpdateNomineeLimit?.(Math.min(30, nomineeLimit + 1))}
+                  title="Show more nominees"
+                  aria-label="Increase nominees"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         {category.citation && (
           <div style={{ fontSize: 'clamp(0.85rem, 1.1vw, 1.1rem)', fontStyle: 'italic', color: 'var(--reveal-text-muted)', marginTop: '2px' }}>

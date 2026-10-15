@@ -24,7 +24,8 @@ import {
   Trophy,
   Sparkles,
   ShieldAlert,
-  Download
+  Download,
+  Edit2
 } from 'lucide-react';
 import ResultsReveal from './components/reveal/ResultsReveal';
 
@@ -120,6 +121,10 @@ export default function App() {
   // Admin Dispute / Action Modal
   const [disputeModal, setDisputeModal] = useState({ isOpen: false, type: 'invalidate', voter: null, reason: '' });
   const [isProcessingDispute, setIsProcessingDispute] = useState(false);
+
+  // Rename Nominee / Faculty Modal
+  const [renameModal, setRenameModal] = useState({ isOpen: false, voter: null, newName: '', department: '', error: null });
+  const [isSubmittingRename, setIsSubmittingRename] = useState(false);
 
   // Quick-Add Faculty Form (Emergency Bypass)
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
@@ -594,6 +599,56 @@ export default function App() {
       alert('Network error: ' + err.message);
     } finally {
       setIsProcessingDispute(false);
+    }
+  };
+
+  const handleOpenRenameModal = (voter) => {
+    setRenameModal({
+      isOpen: true,
+      voter,
+      newName: voter.full_name || '',
+      department: voter.department || '',
+      error: null
+    });
+  };
+
+  const handleConfirmRename = async (e) => {
+    e.preventDefault();
+    if (!renameModal.voter) return;
+    if (!renameModal.newName.trim()) {
+      setRenameModal((prev) => ({ ...prev, error: 'Full name cannot be blank.' }));
+      return;
+    }
+
+    setIsSubmittingRename(true);
+    try {
+      const res = await fetch(apiUrl('/api/admin/nominees/rename'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-pin': adminPin
+        },
+        body: JSON.stringify({
+          staffId: renameModal.voter.staff_id,
+          oldName: renameModal.voter.full_name,
+          newName: renameModal.newName.trim(),
+          department: renameModal.department.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setRenameModal((prev) => ({ ...prev, error: data.error || 'Failed to update nominee name.' }));
+      } else {
+        alert(data.message || `Successfully renamed to "${renameModal.newName.trim()}". Ballots, roster, and award reveal updated.`);
+        setRenameModal({ isOpen: false, voter: null, newName: '', department: '', error: null });
+        fetchRoster();
+        loadAdminData();
+      }
+    } catch (err) {
+      setRenameModal((prev) => ({ ...prev, error: 'Network error: ' + err.message }));
+    } finally {
+      setIsSubmittingRename(false);
     }
   };
 
@@ -2063,7 +2118,17 @@ export default function App() {
                                   )}
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                    <button
+                                      type="button"
+                                      className="btn-table-action"
+                                      onClick={() => handleOpenRenameModal(v)}
+                                      title="Edit faculty name & update all ballots, audits, and reveal screens"
+                                    >
+                                      <Edit2 size={12} />
+                                      Edit Name
+                                    </button>
+
                                     {v.has_voted ? (
                                       <button
                                         className="btn-table-action warning"
@@ -2523,6 +2588,98 @@ export default function App() {
                 </span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================
+           MODAL 6: Edit / Rename Nominee & Faculty Member
+           =================================================================== */}
+      {renameModal.isOpen && renameModal.voter && (
+        <div className="modal-backdrop-styled">
+          <div className="modal-sheet-card" style={{ maxWidth: '520px' }}>
+            <div className="modal-sheet-header">
+              <h2>
+                <Edit2 size={20} style={{ color: 'var(--color-gold)' }} />
+                Edit Faculty / Nominee Name
+              </h2>
+              <button
+                className="btn-outline"
+                onClick={() => setRenameModal({ isOpen: false, voter: null, newName: '', department: '', error: null })}
+                style={{ border: 'none', padding: '6px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmRename}>
+              <div className="modal-sheet-body">
+                <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+                  Updating this faculty name will automatically propagate to all <strong>existing cast ballots</strong>, the <strong>Faculty Roster</strong>, and the <strong>Awards Ceremony & Reveal screens</strong> seamlessly.
+                </p>
+
+                {renameModal.error && (
+                  <div className="alert-card error" style={{ marginBottom: '14px' }}>
+                    <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                    <span>{renameModal.error}</span>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label className="input-label-styled">Staff ID</label>
+                  <input
+                    type="text"
+                    className="input-styled"
+                    value={renameModal.voter.staff_id}
+                    disabled
+                    style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label className="input-label-styled">Corrected Full Name *</label>
+                  <input
+                    type="text"
+                    className="input-styled"
+                    value={renameModal.newName}
+                    onChange={(e) => setRenameModal({ ...renameModal, newName: e.target.value })}
+                    placeholder="e.g. Dr. Jane Doe"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="input-label-styled">Department / Faculty</label>
+                  <input
+                    type="text"
+                    className="input-styled"
+                    value={renameModal.department}
+                    onChange={(e) => setRenameModal({ ...renameModal, department: e.target.value })}
+                    placeholder="e.g. Computer Science & Engineering"
+                  />
+                </div>
+              </div>
+
+              <div className="modal-sheet-footer">
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setRenameModal({ isOpen: false, voter: null, newName: '', department: '', error: null })}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-solid-primary"
+                  disabled={isSubmittingRename || !renameModal.newName.trim()}
+                  style={{ width: 'auto' }}
+                >
+                  <CheckCircle2 size={16} />
+                  <span>{isSubmittingRename ? 'Updating Everywhere...' : 'Save & Propagate Everywhere'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

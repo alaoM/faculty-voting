@@ -27,6 +27,10 @@ export default function ResultsReveal({
   const [isFrozen, setIsFrozen] = useState(false);
   const [frozenAt, setFrozenAt] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [nomineeLimit, setNomineeLimit] = useState(() => {
+    const saved = localStorage.getItem('armti_reveal_nominee_limit');
+    return saved ? Math.max(1, parseInt(saved, 10)) : 6;
+  });
   const [eventInfo, setEventInfo] = useState({
     name: 'Annual Faculty Excellence Awards',
     faculty: 'Agricultural and Rural Management Training Institute',
@@ -69,6 +73,11 @@ export default function ResultsReveal({
 
       if (data.event) {
         setEventInfo(data.event);
+      }
+      if (data.nomineeLimit || data.event?.nomineeLimit) {
+        const serverLimit = Number(data.nomineeLimit || data.event?.nomineeLimit);
+        setNomineeLimit(serverLimit);
+        localStorage.setItem('armti_reveal_nominee_limit', String(serverLimit));
       }
       if (Array.isArray(data.categories)) {
         setCategories(data.categories);
@@ -126,8 +135,27 @@ export default function ResultsReveal({
   }, [toggleFullscreen]);
 
   // -------------------------------------------------------------
-  // Snapshot & Branding Actions
+  // Snapshot, Nominee Limit & Branding Actions
   // -------------------------------------------------------------
+  const handleUpdateNomineeLimit = useCallback(async (newLimit) => {
+    const parsed = Math.max(1, Math.min(50, parseInt(newLimit, 10) || 6));
+    setNomineeLimit(parsed);
+    localStorage.setItem('armti_reveal_nominee_limit', String(parsed));
+
+    try {
+      await fetch(apiUrl('/api/admin/results/nominee-limit'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminPin ? { 'x-admin-pin': adminPin } : {})
+        },
+        body: JSON.stringify({ nomineeLimit: parsed })
+      });
+    } catch (e) {
+      console.warn('Could not persist nominee limit to backend:', e.message);
+    }
+  }, [adminPin]);
+
   const handleUpdateBranding = async (newBranding) => {
     const res = await fetch(apiUrl('/api/admin/results/branding'), {
       method: 'POST',
@@ -144,6 +172,11 @@ export default function ResultsReveal({
     const result = await res.json();
     if (result.branding) {
       setEventInfo(result.branding);
+      if (result.branding.nomineeLimit !== undefined) {
+        const lim = Number(result.branding.nomineeLimit);
+        setNomineeLimit(lim);
+        localStorage.setItem('armti_reveal_nominee_limit', String(lim));
+      }
     }
   };
 
@@ -195,6 +228,29 @@ export default function ResultsReveal({
     await fetchRevealData();
   };
 
+  const handleRenameNominee = async ({ staffId, oldName, newName, department }) => {
+    const res = await fetch(apiUrl('/api/admin/nominees/rename'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(adminPin ? { 'x-admin-pin': adminPin } : {})
+      },
+      body: JSON.stringify({
+        staff_id: staffId,
+        old_name: oldName,
+        new_name: newName,
+        department
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to rename nominee');
+    }
+    const data = await res.json();
+    await fetchRevealData();
+    return data;
+  };
+
   const handleSeedDummyVotes = async () => {
     if (!window.confirm('Populate realistic test voting data (up to 10 nominees per category with distinct winners)? This will simulate ballots from the Google Sheet roster.')) {
       return;
@@ -224,6 +280,7 @@ export default function ResultsReveal({
   const handleExportSnapshot = () => {
     const exportData = {
       event: eventInfo,
+      nomineeLimit,
       frozenAt: frozenAt || new Date().toISOString(),
       categories
     };
@@ -239,6 +296,11 @@ export default function ResultsReveal({
   const handleLoadSnapshotFile = (snapshotData) => {
     if (snapshotData.event) {
       setEventInfo(snapshotData.event);
+    }
+    if (snapshotData.nomineeLimit) {
+      const lim = Number(snapshotData.nomineeLimit);
+      setNomineeLimit(lim);
+      localStorage.setItem('armti_reveal_nominee_limit', String(lim));
     }
     if (snapshotData.categories) {
       setCategories(snapshotData.categories);
@@ -369,6 +431,8 @@ export default function ResultsReveal({
               onResetAllReveals={handleResetAllReveals}
               isFullscreen={isFullscreen}
               onToggleFullscreen={toggleFullscreen}
+              nomineeLimit={nomineeLimit}
+              onUpdateNomineeLimit={handleUpdateNomineeLimit}
             />
           )}
 
@@ -383,6 +447,8 @@ export default function ResultsReveal({
               isAlreadyRevealed={revealedCategoryIds.has(currentCategory.id)}
               onTriggerFlash={triggerFlashEffect}
               onTriggerConfetti={triggerConfettiEffect}
+              nomineeLimit={nomineeLimit}
+              onUpdateNomineeLimit={handleUpdateNomineeLimit}
             />
           )}
 
@@ -400,12 +466,16 @@ export default function ResultsReveal({
               isLocked={isLocked}
               isFrozen={isFrozen}
               frozenAt={frozenAt}
+              nomineeLimit={nomineeLimit}
+              onUpdateNomineeLimit={handleUpdateNomineeLimit}
               onUpdateBranding={handleUpdateBranding}
               onToggleLock={handleToggleLock}
               onFreezeSnapshot={handleFreezeSnapshot}
               onUnfreezeSnapshot={handleUnfreezeSnapshot}
               onExportSnapshot={handleExportSnapshot}
               onLoadSnapshotFile={handleLoadSnapshotFile}
+              categories={categories}
+              onRenameNominee={handleRenameNominee}
               onSeedDummyVotes={handleSeedDummyVotes}
               onCloseSetup={() => setView('menu')}
             />
